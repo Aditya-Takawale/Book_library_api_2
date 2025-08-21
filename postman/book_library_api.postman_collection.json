@@ -1,0 +1,98 @@
+{
+    "info": {
+        "name": "Book Library API",
+        "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "description": "API collection for Book Library Management",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Create Book",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {"key": "title", "value": "Sample Book", "type": "text"},
+                        {"key": "author", "value": "John Doe", "type": "text"},
+                        {"key": "genre", "value": "Fiction", "type": "text"},
+                        {"key": "page_count", "value": "300", "type": "text"},
+                        {"key": "publication_year", "value": "2023", "type": "text"},
+                        {"key": "description", "value": "A sample book description", "type": "text"},
+                        {"key": "cover_image", "type": "file", "src": []}
+                    ]
+                },
+                "url": "{{base_url}}/books/"
+            }
+        },
+        {
+            "name": "Get All Books",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/books/"
+            }
+        },
+        {
+            "name": "Get Book by ID",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/books/1"
+            }
+        },
+        {
+            "name": "Update Book",
+            "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {"key": "title", "value": "Updated Book", "type": "text"}
+                    ]
+                },
+                "url": "{{base_url}}/books/1"
+            }
+        },
+        {
+            "name": "Delete Book",
+            "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/books/1"
+            }
+        },
+        {
+            "name": "Get Books by Author",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/books/author/John%20Doe"
+            }
+        },
+        {
+            "name": "Search Books",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/books/search/?q=sample"
+            }
+        },
+        {
+            "name": "Filter Books",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/books/filter/?genre=Fiction&publication_year=2023"
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000"
+        }
+    ]
+}
