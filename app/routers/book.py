@@ -1,151 +1,181 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from typing import List, Optional
-from app.models.book import Book
-from app.schemas.book import BookCreate, BookResponse, BookUpdate
+from app.models.book import Book as BookModel
+from app.schemas.book import Book, BookCreate
 from app.database import get_db
 from app.utils.logger import logger
-from fastapi_pagination import Page, paginate, add_pagination
+from fastapi_pagination import Page, add_pagination, paginate
+from typing import Optional
 import os
 from app.config import settings
 import uuid
 
 router = APIRouter(prefix="/books", tags=["books"])
 
-@router.post("/", response_model=BookResponse)
-async def create_book(book: BookCreate, file: Optional[UploadFile] = None, db: Session = Depends(get_db)):
-    logger.info(f"Creating new book: {book.title}")
+@router.post("/", response_model=Book)
+async def create_book(
+    title: str = Form(...),
+    author: str = Form(...),
+    genre: str = Form(...),
+    page_count: int = Form(...),
+    publication_year: int = Form(...),
+    description: Optional[str] = Form(None),
+    cover_image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
     try:
-        db_book = Book(**book.dict(exclude_unset=True))
-        
-        if file:
+        cover_image_path = None
+        if cover_image:
+            # Ensure uploads directory exists
             os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-            file_extension = file.filename.split('.')[-1]
+            # Generate unique filename
+            file_extension = cover_image.filename.split(".")[-1]
             file_name = f"{uuid.uuid4()}.{file_extension}"
             file_path = os.path.join(settings.UPLOAD_DIR, file_name)
-            with open(file_path, "wb") as buffer:
-                content = await file.read()
-                buffer.write(content)
-            db_book.cover_image = file_path
-            
+            # Save file
+            with open(file_path, "wb") as f:
+                content = await cover_image.read()
+                f.write(content)
+            cover_image_path = file_path
+
+        db_book = BookModel(
+            title=title,
+            author=author,
+            genre=genre,
+            page_count=page_count,
+            publication_year=publication_year,
+            description=description,
+            cover_image=cover_image_path
+        )
         db.add(db_book)
         db.commit()
         db.refresh(db_book)
-        logger.info(f"Book created successfully: {db_book.id}")
+        logger.info(f"Created book: {db_book.title} by {db_book.author}")
         return db_book
     except Exception as e:
         logger.error(f"Error creating book: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/", response_model=Page[BookResponse])
+@router.get("/", response_model=Page[Book])
 async def get_books(db: Session = Depends(get_db)):
-    logger.info("Fetching all books")
     try:
-        books = db.query(Book).all()
+        books = db.query(BookModel).all()
+        logger.info("Fetched all books")
         return paginate(books)
     except Exception as e:
         logger.error(f"Error fetching books: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/{book_id}", response_model=BookResponse)
-async def get_book(book_id: int, db: Session = Depends(get_db)):
-    logger.info(f"Fetching book with id: {book_id}")
-    book = db.query(Book).filter(Book.id == book_id).first()
+@router.get("/{id}", response_model=Book)
+async def get_book(id: int, db: Session = Depends(get_db)):
+    book = db.query(BookModel).filter(BookModel.id == id).first()
     if not book:
-        logger.warning(f"Book not found: {book_id}")
+        logger.warning(f"Book with id {id} not found")
         raise HTTPException(status_code=404, detail="Book not found")
+    logger.info(f"Fetched book: {book.title}")
     return book
 
-@router.put("/{book_id}", response_model=BookResponse)
-async def update_book(book_id: int, book: BookUpdate, file: Optional[UploadFile] = None, db: Session = Depends(get_db)):
-    logger.info(f"Updating book with id: {book_id}")
-    db_book = db.query(Book).filter(Book.id == book_id).first()
-    if not db_book:
-        logger.warning(f"Book not found for update: {book_id}")
-        raise HTTPException(status_code=404, detail="Book not found")
-    
+@router.put("/{id}", response_model=Book)
+async def update_book(
+    id: int,
+    title: str = Form(...),
+    author: str = Form(...),
+    genre: str = Form(...),
+    page_count: int = Form(...),
+    publication_year: int = Form(...),
+    description: Optional[str] = Form(None),
+    cover_image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
     try:
-        update_data = book.dict(exclude_unset=True)
-        if file:
+        book = db.query(BookModel).filter(BookModel.id == id).first()
+        if not book:
+            logger.warning(f"Book with id {id} not found")
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        book.title = title
+        book.author = author
+        book.genre = genre
+        book.page_count = page_count
+        book.publication_year = publication_year
+        book.description = description
+
+        if cover_image:
+            # Ensure uploads directory exists
             os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-            file_extension = file.filename.split('.')[-1]
+            # Generate unique filename
+            file_extension = cover_image.filename.split(".")[-1]
             file_name = f"{uuid.uuid4()}.{file_extension}"
             file_path = os.path.join(settings.UPLOAD_DIR, file_name)
-            with open(file_path, "wb") as buffer:
-                content = await file.read()
-                buffer.write(content)
-            update_data["cover_image"] = file_path
-            
-        for key, value in update_data.items():
-            setattr(db_book, key, value)
-            
+            # Save file
+            with open(file_path, "wb") as f:
+                content = await cover_image.read()
+                f.write(content)
+            book.cover_image = file_path
+
         db.commit()
-        db.refresh(db_book)
-        logger.info(f"Book updated successfully: {book_id}")
-        return db_book
+        db.refresh(book)
+        logger.info(f"Updated book: {book.title}")
+        return book
     except Exception as e:
         logger.error(f"Error updating book: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.delete("/{book_id}")
-async def delete_book(book_id: int, db: Session = Depends(get_db)):
-    logger.info(f"Deleting book with id: {book_id}")
-    book = db.query(Book).filter(Book.id == book_id).first()
-    if not book:
-        logger.warning(f"Book not found for deletion: {book_id}")
-        raise HTTPException(status_code=404, detail="Book not found")
-    
+@router.delete("/{id}")
+async def delete_book(id: int, db: Session = Depends(get_db)):
     try:
-        if book.cover_image and os.path.exists(book.cover_image):
-            os.remove(book.cover_image)
+        book = db.query(BookModel).filter(BookModel.id == id).first()
+        if not book:
+            logger.warning(f"Book with id {id} not found")
+            raise HTTPException(status_code=404, detail="Book not found")
         db.delete(book)
         db.commit()
-        logger.info(f"Book deleted successfully: {book_id}")
-        return {"message": "Book deleted successfully"}
+        logger.info(f"Deleted book: {book.title}")
+        return {"detail": "Book deleted"}
     except Exception as e:
         logger.error(f"Error deleting book: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/author/{author}", response_model=Page[BookResponse])
+@router.get("/author/{author}", response_model=Page[Book])
 async def get_books_by_author(author: str, db: Session = Depends(get_db)):
-    logger.info(f"Fetching books by author: {author}")
     try:
-        books = db.query(Book).filter(Book.author.ilike(f"%{author}%")).all()
+        books = db.query(BookModel).filter(BookModel.author.ilike(f"%{author}%")).all()
+        logger.info(f"Fetched books by author: {author}")
         return paginate(books)
     except Exception as e:
         logger.error(f"Error fetching books by author: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/search/", response_model=Page[BookResponse])
+@router.get("/search/", response_model=Page[Book])
 async def search_books(q: str, db: Session = Depends(get_db)):
-    logger.info(f"Searching books with query: {q}")
     try:
-        books = db.query(Book).filter(
-            or_(Book.title.ilike(f"%{q}%"), Book.author.ilike(f"%{q}%"))
+        books = db.query(BookModel).filter(
+            (BookModel.title.ilike(f"%{q}%")) | (BookModel.author.ilike(f"%{q}%"))
         ).all()
+        logger.info(f"Search query: {q}")
         return paginate(books)
     except Exception as e:
         logger.error(f"Error searching books: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/filter/", response_model=Page[BookResponse])
+@router.get("/filter/", response_model=Page[Book])
 async def filter_books(
-    genre: Optional[str] = Query(None),
-    publication_year: Optional[int] = Query(None),
+    genre: Optional[str] = None,
+    publication_year: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
-    logger.info(f"Filtering books with params: genre={genre}, year={publication_year}")
     try:
-        query = db.query(Book)
+        query = db.query(BookModel)
         if genre:
-            query = query.filter(Book.genre.ilike(f"%{genre}%"))
+            query = query.filter(BookModel.genre.ilike(f"%{genre}%"))
         if publication_year:
-            query = query.filter(Book.publication_year == publication_year)
+            query = query.filter(BookModel.publication_year == publication_year)
         books = query.all()
+        logger.info(f"Filtered books by genre: {genre}, year: {publication_year}")
         return paginate(books)
     except Exception as e:
         logger.error(f"Error filtering books: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 add_pagination(router)

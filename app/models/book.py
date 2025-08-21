@@ -1,17 +1,17 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy.sql import func
 from app.database import Base
-from datetime import datetime
 
 class Book(Base):
     __tablename__ = "books"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    author = Column(String, nullable=False)
-    genre = Column(String, nullable=False)
+    title = Column(String(200), nullable=False)
+    author = Column(String(100), nullable=False)
+    genre = Column(String(50), nullable=False)
     page_count = Column(Integer, nullable=False)
     publication_year = Column(Integer, nullable=False)
-    description = Column(Text)
-    cover_image = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    description = Column(Text, nullable=True)
+    cover_image = Column(String(255), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

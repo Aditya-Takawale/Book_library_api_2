@@ -1,6 +1,7 @@
+
 # Book Library Management API
 
-A RESTful API for managing a digital book library built with FastAPI and PostgreSQL.
+A RESTful API for managing a digital book library built with FastAPI and MySQL.
 
 ## Features
 - CRUD operations for books
@@ -14,13 +15,15 @@ A RESTful API for managing a digital book library built with FastAPI and Postgre
 - Postman collection for API testing
 
 ## Prerequisites
-- Python 3.11+
-- PostgreSQL
+- Python 3.11+ or 3.13
+- MySQL 8.0 (managed by Homebrew)
+- MySQL Workbench
 - Docker (optional)
+- Homebrew (required)
 
-## Setup Instructions
+## Setup Instructions (macOS)
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd book_library_api
+1. **Ensure MySQL is Running**:
+   ```bash
+   brew services list
+   brew services start mysql
