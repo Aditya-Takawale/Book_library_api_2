@@ -1,1 +1,49 @@
 2025-08-21 12:51:52,859 - app.utils.logger - INFO - Fetching all books
+2025-08-21 13:34:33,694 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'Coreco Technologies', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 100, 'publication_year': 2004, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 13:34:33,694 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'Coreco Technologies', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 100, 'publication_year': 2004, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 13:35:22,135 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'CORECO', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 150, 'publication_year': 2025, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 13:35:22,135 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'CORECO', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 150, 'publication_year': 2025, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 13:35:43,835 - BookLibraryAPI - INFO - Fetched all books
+2025-08-21 13:35:43,835 - BookLibraryAPI - INFO - Fetched all books
+2025-08-21 13:36:00,978 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'CORECO', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 150, 'publication_year': 2025, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 13:36:00,978 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'CORECO', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 150, 'publication_year': 2025, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 13:36:18,129 - BookLibraryAPI - INFO - Fetched all books
+2025-08-21 13:36:18,129 - BookLibraryAPI - INFO - Fetched all books
+2025-08-21 13:36:37,282 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'CORECO', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 150, 'publication_year': 2025, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 13:36:37,282 - BookLibraryAPI - ERROR - Error creating book: (pymysql.err.OperationalError) (1364, "Field 'id' doesn't have a default value")
+[SQL: INSERT INTO books (title, author, genre, page_count, publication_year, description, cover_image) VALUES (%(title)s, %(author)s, %(genre)s, %(page_count)s, %(publication_year)s, %(description)s, %(cover_image)s)]
+[parameters: {'title': 'CORECO', 'author': 'Aditya', 'genre': 'FUN', 'page_count': 150, 'publication_year': 2025, 'description': None, 'cover_image': None}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-21 14:48:45,165 - BookLibraryAPI - INFO - Accessed root endpoint
+2025-08-21 14:49:13,217 - BookLibraryAPI - INFO - Accessed root endpoint
+2025-08-21 14:49:27,368 - BookLibraryAPI - INFO - Accessed root endpoint
+2025-08-21 14:49:40,521 - BookLibraryAPI - INFO - Accessed root endpoint
+2025-08-21 14:50:16,515 - BookLibraryAPI - INFO - Created book: Coreco by Aditya with ID 1
+2025-08-21 14:50:40,356 - BookLibraryAPI - INFO - Fetched all books
+2025-08-21 14:51:13,163 - BookLibraryAPI - INFO - Search query: Coreco
+2025-08-21 14:55:44,183 - BookLibraryAPI - INFO - Created book: Management by NOOB with ID 2
+2025-08-21 15:05:13,558 - BookLibraryAPI - INFO - Accessed root endpoint
+2025-08-21 15:05:57,153 - BookLibraryAPI - INFO - Created book: NEW by NEW with ID 3
+2025-08-21 15:06:23,957 - BookLibraryAPI - INFO - Created book: TEST by TEST with ID 4
+2025-08-21 15:06:41,970 - BookLibraryAPI - INFO - Fetched book: TEST
