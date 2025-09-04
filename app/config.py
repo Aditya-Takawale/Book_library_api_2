@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "mysql+pymysql://root:@localhost:3306/library_db"
     UPLOAD_DIR: str = "uploads"
     LOG_LEVEL: str = "INFO"
+    SECRET_KEY: str = "default-secret-key-change-in-production"
 
     class Config:
         env_file = ".env"

@@ -1,6 +1,13 @@
 
 from fastapi import FastAPI
 from app.routers import book as book_router
+from app.routers import book_enhanced as book_enhanced_router
+from app.routers import auth as auth_router
+from app.routers import author as author_router
+from app.routers import review as review_router
+from app.routers import migration as migration_router
+from app.routers import loan as loan_router
+from app.routers import user_management as user_management_router
 from app.core.db import engine, Base
 from app.database import SessionLocal
 from app.models import RequestLog
@@ -37,12 +44,49 @@ app = FastAPI(title="Book Library Management API")
 Base.metadata.create_all(bind=engine)
 
 # Include routers
+app.include_router(auth_router.router)  # Authentication & basic user operations
+app.include_router(user_management_router.router)  # Enhanced user management with RBAC
 app.include_router(book_router.router)
+app.include_router(book_enhanced_router.router, prefix="/v2")  # Enhanced book management
+app.include_router(author_router.router)
+app.include_router(review_router.router)
+app.include_router(loan_router.router)  # Loan and reservation management
+app.include_router(migration_router.router, prefix="/admin")  # Migration management
 
 @app.get("/")
 async def root():
     logger.info("Accessed root endpoint")
     return {"message": "Welcome to Book Library Management API"}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for deployment monitoring."""
+    try:
+        # Check database connectivity
+        from app.core.db import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        
+        # Check migration status
+        from app.utils.migrations import MigrationManager
+        migration_manager = MigrationManager()
+        status = migration_manager.check_migration_status()
+        
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "migrations": {
+                "current_revision": status.get("current_revision"),
+                "is_up_to_date": status.get("is_up_to_date", False)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e)
+        }
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

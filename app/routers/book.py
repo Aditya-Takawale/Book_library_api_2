@@ -1,23 +1,38 @@
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from sqlalchemy.orm import Session
 from app.models.book import Book as BookModel
-from app.schemas.book import Book, BookCreate
+from app.schemas.book import BookResponse, BookCreate, BookUpdate, BookSummary
+from app.schemas.user import UserResponse
+from app.services.book_service import BookService
+from app.utils.dependencies import (
+    get_current_user, 
+    get_optional_user, 
+    require_admin, 
+    require_librarian, 
+    require_member,
+    require_manage_books
+)
+from app.utils.rbac import (
+    require_admin_user,
+    require_librarian_user,
+    require_member_user,
+    log_access_attempt
+)
 from app.database import get_db
-from fastapi_pagination import Page, add_pagination, paginate
-from typing import Optional
+from typing import Optional, List
 import os
 import logging
 import uuid
 import traceback
+from fastapi_pagination import Page, add_pagination, paginate
 
 logger = logging.getLogger("BookLibraryAPI")
 
-router = APIRouter(prefix="/books", tags=["books"])
+router = APIRouter(prefix="/books", tags=["Books"])
 
-@router.post("/", response_model=Book)
+@router.post("/", response_model=BookResponse)
 async def create_book(
-    id: Optional[int] = Form(None),
     title: str = Form(...),
     author: str = Form(...),
     genre: str = Form(...),
@@ -25,77 +40,97 @@ async def create_book(
     publication_year: int = Form(...),
     description: Optional[str] = Form(None),
     cover_image: Optional[UploadFile] = File(None),
+    current_user: UserResponse = Depends(require_librarian_user),
     db: Session = Depends(get_db)
 ):
+    """Create a new book (requires librarian or admin role)."""
     try:
-        logger.debug(f"Received POST /books/ with title={title}, author={author}, genre={genre}, "
-                     f"page_count={page_count}, publication_year={publication_year}, "
-                     f"description={description}, cover_image={cover_image.filename if cover_image else None}")
+        log_access_attempt(current_user, "books", "create", True)
+        logger.info(f"Creating book: {title} by {author} (User: {current_user.email})")
         
-        from app.config import settings
+        # Handle cover image upload (optimized)
         cover_image_path = None
-        if cover_image:
-            # Ensure uploads directory exists
-            os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-            # Generate unique filename
+        if cover_image and cover_image.filename:
+            from app.config import settings
+            
+            # Validate file type quickly
             file_extension = cover_image.filename.split(".")[-1].lower()
-            if file_extension not in ["jpg", "jpeg", "png"]:
-                logger.warning(f"Invalid file extension for cover_image: {file_extension}")
-                raise HTTPException(status_code=400, detail="Only .jpg, .jpeg, or .png files are allowed")
+            if file_extension not in ["jpg", "jpeg", "png", "gif"]:
+                raise HTTPException(status_code=400, detail="Only image files are allowed (.jpg, .jpeg, .png, .gif)")
+            
+            # Create uploads directory
+            os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+            
+            # Generate unique filename
             file_name = f"{uuid.uuid4()}.{file_extension}"
             file_path = os.path.join(settings.UPLOAD_DIR, file_name)
-            # Save file
+            
+            # Save file asynchronously
             try:
+                content = await cover_image.read()
                 with open(file_path, "wb") as f:
-                    content = await cover_image.read()
                     f.write(content)
                 cover_image_path = file_path
-                logger.info(f"Saved cover image to {file_path}")
+                logger.info(f"Cover image saved: {file_name}")
             except Exception as e:
                 logger.error(f"Failed to save cover image: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Failed to save cover image: {str(e)}")
+                raise HTTPException(status_code=500, detail="Failed to save cover image")
 
-        # Optional explicit ID support for POST
-        if id is not None:
-            existing = db.query(BookModel).filter(BookModel.id == id).first()
-            if existing:
-                raise HTTPException(status_code=409, detail="Book with this id already exists")
-
-        book_data = dict(
-            title=title,
-            author=author,
-            genre=genre,
-            page_count=page_count,
-            publication_year=publication_year,
-            description=description,
-            cover_image=cover_image_path,
-        )
-        if id is not None:
-            book_data["id"] = id
-
-        db_book = BookModel(**book_data)
-        db.add(db_book)
-        db.commit()
-        db.refresh(db_book)
-        logger.info(f"Created book: {db_book.title} by {db_book.author} with ID {db_book.id}")
-        return db_book
-    except HTTPException as he:
-        raise he
+        # Create book record with audit fields
+        try:
+            db_book = BookModel(
+                title=title,
+                author=author,
+                genre=genre,
+                page_count=page_count,
+                publication_year=publication_year,
+                description=description,
+                cover_image=cover_image_path,
+                created_by=current_user.id,
+                updated_by=current_user.id
+            )
+            
+            db.add(db_book)
+            db.commit()
+            db.refresh(db_book)
+            
+            logger.info(f"✅ Book created successfully: ID {db_book.id} by user {current_user.email}")
+            return db_book
+            
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Database error: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to save book to database")
+            
+    except HTTPException:
+        log_access_attempt(current_user, "books", "create", False, str(e))
+        raise
     except Exception as e:
-        logger.error(f"Error creating book: {str(e)}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        log_access_attempt(current_user, "books", "create", False, str(e))
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/", response_model=Page[Book])
-async def get_books(db: Session = Depends(get_db)):
+@router.get("/", response_model=Page[BookSummary])
+async def get_books(
+    current_user: Optional[UserResponse] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """Get all books (public endpoint, authentication optional)."""
     try:
-        books = db.query(BookModel).all()
-        logger.info("Fetched all books")
+        books = db.query(BookModel).filter(BookModel.is_available == True).all()
+        
+        if current_user:
+            log_access_attempt(current_user, "books", "list", True)
+            logger.info(f"User {current_user.email} fetched books list")
+        else:
+            logger.info("Anonymous user fetched books list")
+            
         return paginate(books)
     except Exception as e:
         logger.error(f"Error fetching books: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/{id}", response_model=Book)
+@router.get("/{id}", response_model=BookResponse)
 async def get_book(id: int, db: Session = Depends(get_db)):
     book = db.query(BookModel).filter(BookModel.id == id).first()
     if not book:
@@ -104,7 +139,7 @@ async def get_book(id: int, db: Session = Depends(get_db)):
     logger.info(f"Fetched book: {book.title}")
     return book
 
-@router.put("/{id}", response_model=Book)
+@router.put("/{id}", response_model=BookResponse)
 async def update_book(
     id: int,
     title: str = Form(...),
@@ -176,7 +211,7 @@ async def delete_book(id: int, db: Session = Depends(get_db)):
         logger.error(f"Error deleting book: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/author/{author}", response_model=Page[Book])
+@router.get("/author/{author}", response_model=Page[BookSummary])
 async def get_books_by_author(author: str, db: Session = Depends(get_db)):
     try:
         # MySQL doesn't support ILIKE; use LIKE with lower-casing for case-insensitivity
@@ -192,7 +227,7 @@ async def get_books_by_author(author: str, db: Session = Depends(get_db)):
         logger.error(f"Error fetching books by author: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/search/", response_model=Page[Book])
+@router.get("/search/", response_model=Page[BookSummary])
 async def search_books(q: str, db: Session = Depends(get_db)):
     try:
         from sqlalchemy import func
@@ -211,7 +246,7 @@ async def search_books(q: str, db: Session = Depends(get_db)):
         logger.error(f"Error searching books: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/filter/", response_model=Page[Book])
+@router.get("/filter/", response_model=Page[BookSummary])
 async def filter_books(
     genre: Optional[str] = None,
     publication_year: Optional[int] = None,

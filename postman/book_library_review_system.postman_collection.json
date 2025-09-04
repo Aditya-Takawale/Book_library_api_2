@@ -1,0 +1,476 @@
+{
+    "info": {
+        "_postman_id": "book-review-system-api",
+        "name": "Book Library API with Review System",
+        "description": "Complete API collection for Book Library Management with Review System",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "User Registration",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/register",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "register"]
+                        }
+                    }
+                },
+                {
+                    "name": "User Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/x-www-form-urlencoded"
+                            }
+                        ],
+                        "body": {
+                            "mode": "urlencoded",
+                            "urlencoded": [
+                                {
+                                    "key": "username",
+                                    "value": "testuser",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "password",
+                                    "value": "StrongPass123!",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": ["{{base_url}}"],
+                            "path": ["auth", "login"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    pm.collectionVariables.set('access_token', response.access_token);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Books",
+            "item": [
+                {
+                    "name": "Create Book (Enhanced)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"The Great Gatsby\",\n  \"genre\": \"Classic Literature\",\n  \"publication_year\": 1925,\n  \"page_count\": 180,\n  \"description\": \"A classic American novel set in the Jazz Age\",\n  \"isbn\": \"978-0-7432-7356-5\",\n  \"language\": \"English\",\n  \"author_ids\": [1]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v2/books",
+                            "host": ["{{base_url}}"],
+                            "path": ["v2", "books"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Books",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/v2/books?skip=0&limit=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["v2", "books"],
+                            "query": [
+                                {
+                                    "key": "skip",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Book by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/v2/books/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["v2", "books", "1"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Authors",
+            "item": [
+                {
+                    "name": "Create Author",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"F. Scott Fitzgerald\",\n  \"birth_date\": \"1896-09-24\",\n  \"death_date\": \"1940-12-21\",\n  \"nationality\": \"American\",\n  \"biography\": \"Francis Scott Key Fitzgerald was an American novelist and short-story writer.\",\n  \"education\": \"Princeton University\",\n  \"genres\": [\"Fiction\", \"Classic Literature\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/authors",
+                            "host": ["{{base_url}}"],
+                            "path": ["authors"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Authors",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/authors",
+                            "host": ["{{base_url}}"],
+                            "path": ["authors"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Reviews",
+            "item": [
+                {
+                    "name": "Create Review",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"rating\": 5,\n  \"title\": \"Masterpiece of American Literature\",\n  \"review_text\": \"The Great Gatsby is an exceptional novel that perfectly captures the essence of the Jazz Age. Fitzgerald's prose is beautiful and the characters are compelling. A must-read for anyone interested in American literature.\",\n  \"is_spoiler\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/reviews/books/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "books", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Review by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Review",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"rating\": 4,\n  \"title\": \"Great American Novel\",\n  \"review_text\": \"Updated review: The Great Gatsby remains a powerful exploration of the American Dream. While the pacing can be slow at times, the literary merit is undeniable.\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/reviews/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Review",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Book Reviews",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/books/1/reviews?skip=0&limit=10&sort_by=created_at&order=desc",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "books", "1", "reviews"],
+                            "query": [
+                                {
+                                    "key": "skip",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "sort_by",
+                                    "value": "created_at"
+                                },
+                                {
+                                    "key": "order",
+                                    "value": "desc"
+                                },
+                                {
+                                    "key": "min_rating",
+                                    "value": "4",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "verified_only",
+                                    "value": "false",
+                                    "disabled": true
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Book Review Stats",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/books/1/stats",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "books", "1", "stats"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get My Reviews",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/me/reviews?skip=0&limit=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "me", "reviews"],
+                            "query": [
+                                {
+                                    "key": "skip",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get My Review for Book",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/books/1/my-review",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "books", "1", "my-review"]
+                        }
+                    }
+                },
+                {
+                    "name": "Vote on Review Helpfulness",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"is_helpful\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/reviews/1/vote",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "1", "vote"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Trending Reviews",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/trending?days=7&limit=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "trending"],
+                            "query": [
+                                {
+                                    "key": "days",
+                                    "value": "7"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Search Reviews",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/search?q=great&skip=0&limit=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "search"],
+                            "query": [
+                                {
+                                    "key": "q",
+                                    "value": "great"
+                                },
+                                {
+                                    "key": "skip",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Review Analytics (Admin)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/reviews/analytics?days=30",
+                            "host": ["{{base_url}}"],
+                            "path": ["reviews", "analytics"],
+                            "query": [
+                                {
+                                    "key": "days",
+                                    "value": "30"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
