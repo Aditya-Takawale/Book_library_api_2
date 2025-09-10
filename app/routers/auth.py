@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Union
 from app.database import get_db
-from app.schemas.user import UserRegistration, UserResponse, UserLogin, PasswordChangeRequest, UserUpdate
+from app.schemas.user import UserRegistration, UserResponse, UserLogin, EncryptedUserLogin, PasswordChangeRequest, UserUpdate, TokenResponse
 from app.services.user_service import UserService
 from app.utils.auth import create_access_token, get_password_strength_requirements, refresh_access_token, invalidate_session, invalidate_all_user_sessions, get_active_sessions, cleanup_expired_sessions
 from app.utils.dependencies import get_current_user, get_admin_user, get_current_active_user, require_admin, require_member
 from app.utils.rbac import require_admin_user, require_member_user, log_access_attempt
+from app.utils.encryption import decrypt_login_data
 from app.models.user import UserRole, UserStatus
 from datetime import timedelta
 import logging
@@ -36,42 +37,34 @@ async def register_user(
     - Admin: Full access to all operations
     - Member: Limited access (default)
     """
-    try:
-        logger.info(f"📝 New user registration attempt: {user_data.email}")
-        
-        # Create user through service
-        new_user = UserService.create_user(db, user_data)
-        
-        logger.info(f"✅ User registered successfully: {new_user.email} (Role: {new_user.role.value})")
-        
-        return UserResponse(
-            id=new_user.id,
-            email=new_user.email,
-            username=new_user.username,
-            first_name=new_user.first_name,
-            last_name=new_user.last_name,
-            role=new_user.role.value,
-            is_active=new_user.is_active,
-            email_verified=new_user.email_verified,
-            created_at=new_user.created_at
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Registration failed for {user_data.email}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Registration failed. Please try again."
-        )
+    logger.info(f"📝 New user registration attempt: {user_data.email}")
+    
+    # Create user through service
+    new_user = UserService.create_user(db, user_data)
+    
+    logger.info(f"✅ User registered successfully: {new_user.email} (Role: {new_user.role.value})")
+    
+    return UserResponse(
+        id=new_user.id,
+        email=new_user.email,
+        username=new_user.username,
+        first_name=new_user.first_name,
+        last_name=new_user.last_name,
+        role=new_user.role.value,
+        is_active=new_user.is_active,
+        email_verified=new_user.email_verified,
+        created_at=new_user.created_at
+    )
 
-@router.post("/login")
+@router.post("/login", response_model=TokenResponse)
 async def login_user(
-    login_data: UserLogin,
+    login_data: Union[UserLogin, EncryptedUserLogin],
     db: Session = Depends(get_db)
 ):
     """
     Authenticate user and return access token with refresh token and session management.
+    
+    Supports both regular and encrypted password formats for enhanced security.
     
     Returns:
     - access_token: JWT token for API access (expires in 30 minutes)
@@ -79,23 +72,50 @@ async def login_user(
     - session_id: Unique session identifier for session management
     - user: User information
     """
+    logger.info(f"🔐 Login attempt for: {login_data.email}")
+    
     try:
-        logger.info(f"🔐 Login attempt for: {login_data.email}")
+        # Check if this is encrypted login data
+        if hasattr(login_data, 'encrypted') and login_data.encrypted:
+            logger.info(f"🔒 Processing encrypted login for: {login_data.email}")
+            
+            # Decrypt the login data
+            encrypted_data = {
+                'email': login_data.email,
+                'password': login_data.password,
+                'nonce': login_data.nonce,
+                'tag': login_data.tag,
+                'encrypted': True
+            }
+            
+            decrypted_data = decrypt_login_data(encrypted_data)
+            email = decrypted_data['email']
+            password = decrypted_data['password']
+            
+            logger.info(f"🔓 Password decrypted successfully for: {email}")
+        else:
+            # Regular login (backward compatibility)
+            logger.info(f"🔑 Processing regular login for: {login_data.email}")
+            email = login_data.email
+            password = login_data.password
         
         # Use the enhanced login method that creates tokens with session
-        tokens_response = UserService.login_user(db, login_data.email, login_data.password)
+        tokens_response = UserService.login_user(db, email, password)
         
-        logger.info(f"✅ Successful login: {login_data.email}")
+        logger.info(f"✅ Successful login: {email}")
         return tokens_response
         
-    except HTTPException:
-        logger.warning(f"❌ Failed login attempt for: {login_data.email}")
-        raise
-    except Exception as e:
-        logger.error(f"❌ Login error for {login_data.email}: {str(e)}")
+    except ValueError as ve:
+        logger.error(f"❌ Decryption failed for {login_data.email}: {str(ve)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Login failed. Please try again."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid encrypted login data"
+        )
+    except Exception as e:
+        logger.error(f"❌ Login failed for {login_data.email}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
         )
 
 @router.get("/users", response_model=List[UserResponse])

@@ -1,20 +1,20 @@
 from pydantic import BaseModel, EmailStr, validator, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
 import re
 
 class UserRole(str, Enum):
-    ADMIN = "admin"
-    LIBRARIAN = "librarian"
-    MEMBER = "member"
-    GUEST = "guest"
+    ADMIN = "Admin"
+    LIBRARIAN = "Librarian"
+    MEMBER = "Member"
+    GUEST = "Guest"
 
 class UserStatus(str, Enum):
-    ACTIVE = "active"
-    SUSPENDED = "suspended"
-    PENDING = "pending"
-    DELETED = "deleted"
+    ACTIVE = "Active"
+    SUSPENDED = "Suspended"
+    PENDING = "Pending"
+    DELETED = "Deleted"
 
 class UserRegistration(BaseModel):
     email: EmailStr = Field(..., description="Valid email address")
@@ -61,20 +61,26 @@ class UserResponse(BaseModel):
     id: int
     email: str
     username: str
-    first_name: Optional[str]
-    last_name: Optional[str]
-    role: UserRole
-    status: UserStatus
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: str
     is_active: bool
-    email_verified: bool
-    last_login: Optional[datetime]
-    failed_login_attempts: int
-    permissions: List[str] = []
+    email_verified: Optional[bool] = None
     created_at: datetime
-    
+    current_session_id: Optional[str] = None
+    permissions: Optional[List[str]] = []
+
     class Config:
         from_attributes = True
-        use_enum_values = True
+
+class TokenResponse(BaseModel):
+    """Response model for authentication endpoints"""
+    access_token: str = Field(..., description="JWT access token")
+    refresh_token: str = Field(..., description="JWT refresh token") 
+    token_type: str = Field("bearer", description="Token type")
+    expires_in: int = Field(..., description="Token expiration time in seconds")
+    session_id: str = Field(..., description="Session identifier")
+    user: Dict[str, Any] = Field(..., description="User information")
 
 class UserUpdate(BaseModel):
     first_name: Optional[str] = Field(None, max_length=100)
@@ -86,6 +92,14 @@ class UserUpdate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr = Field(..., description="Email address")
     password: str = Field(..., description="Password")
+
+class EncryptedUserLogin(BaseModel):
+    """Schema for encrypted login data from client-side encryption"""
+    email: EmailStr = Field(..., description="Email address")
+    password: str = Field(..., description="Encrypted password (base64)")
+    nonce: str = Field(..., description="Encryption nonce (base64)")
+    tag: str = Field(..., description="Authentication tag (base64)")
+    encrypted: bool = Field(True, description="Indicates encrypted payload")
 
 class PasswordChangeRequest(BaseModel):
     current_password: str = Field(..., description="Current password")
