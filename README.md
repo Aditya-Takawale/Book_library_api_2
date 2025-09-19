@@ -5,12 +5,21 @@
 ## ✨ **What's New in v2**
 
 This is the enhanced version of the Book Library API featuring:
-- **Role-Based Access Control (RBAC)** with 4 user roles
+- **Role-Based Access Control ## 🚦 **API Status**
+
+🟢 **Server Running**: Production-ready FastAPI server  
+🟢 **Database**: MySQL with all migrations applied  
+🟢 **RBAC**: Fully implemented and operational  
+🟢 **Loan System**: Complete loan and reservation management  
+🟢 **Audit Logging**: Comprehensive access logging  
+🟢 **Migration System**: CLI and API migration tools  
+🟢 **🔐 Client-Side Encryption**: AES-GCM password encryption system with 4 user roles
 - **Enhanced Data Relationships** with proper foreign keys and cascade operations
 - **Loan Management System** for library operations
 - **Reservation System** with priority queues
 - **Comprehensive Audit Logging** for security and compliance
 - **Database Migration System** with CLI tools and API endpoints
+- **🔐 Client-Side Password Encryption** for enhanced browser security
 
 ## 🏗️ **Architecture Overview**
 
@@ -19,6 +28,36 @@ This is the enhanced version of the Book Library API featuring:
 - **Authentication**: JWT tokens with role-based permissions
 - **Security**: RBAC, audit logging, failed login protection
 - **API Design**: RESTful with automatic OpenAPI documentation
+
+## 📁 **Project Structure**
+
+```
+Book_library_api_2/
+├── backend/                      # Backend API server
+│   ├── app/                      # FastAPI application
+│   │   ├── core/                 # Core functionality
+│   │   ├── models/               # SQLAlchemy models
+│   │   ├── routers/              # API route handlers
+│   │   ├── schemas/              # Pydantic schemas
+│   │   ├── services/             # Business logic
+│   │   └── utils/                # Utility functions
+│   ├── alembic/                  # Database migrations
+│   ├── requirements.txt          # Python dependencies
+│   ├── venv311/                  # Virtual environment
+│   └── logs/                     # Application logs
+├── frontend/                     # React TypeScript frontend
+│   ├── src/                      # React source code
+│   │   ├── components/           # Reusable components
+│   │   ├── pages/                # Page components
+│   │   ├── services/             # API services
+│   │   ├── contexts/             # React contexts
+│   │   └── utils/                # Utility functions
+│   ├── public/                   # Static assets
+│   └── package.json              # Node.js dependencies
+├── postman/                      # API testing collections
+├── scripts/                      # Deployment scripts
+└── docs/                         # Documentation files
+```
 
 ## 👥 **User Roles & Permissions**
 
@@ -76,19 +115,27 @@ This is the enhanced version of the Book Library API featuring:
 - Backup and restore functionality
 - Migration history tracking
 
+### 🔐 **Client-Side Password Encryption**
+- **AES-GCM Encryption**: Strong 256-bit encryption using Web Crypto API
+- **PBKDF2 Key Derivation**: 100,000 iterations with SHA-256 for key generation
+- **Perfect Forward Secrecy**: Unique nonce for each encryption session
+- **Browser Network Tab Protection**: Passwords never appear in plain text in developer tools
+- **Backward Compatibility**: Supports both encrypted and regular login formats
+- **Interactive Test Interface**: Real-time encryption testing at `/secure/login-test`
+
 ## 🚀 **Quick Start**
 
 ### Prerequisites
 - Python 3.11+
 - MySQL 8.0+
-- Virtual environment
+- Node.js 18+ (for frontend)
 
-### Installation
+### Backend Setup
 
 1. **Clone the repository**
 ```bash
 git clone https://github.com/Aditya-Takawale/Book_library_api_2.git
-cd Book_library_api_2
+cd Book_library_api_2/backend
 ```
 
 2. **Set up virtual environment**
@@ -104,7 +151,7 @@ pip install -r requirements.txt
 
 4. **Configure environment**
 ```bash
-cp .env.example .env
+cp ../.env.example ../.env
 # Edit .env with your database credentials
 ```
 
@@ -113,25 +160,70 @@ cp .env.example .env
 alembic upgrade head
 ```
 
-6. **Start the server**
+6. **Start the backend server**
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+# For development with auto-reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# For production
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-7. **Access the API**
-- API Server: http://localhost:8080
-- Interactive Docs: http://localhost:8080/docs
-- ReDoc: http://localhost:8080/redoc
+### Frontend Setup
+
+1. **Navigate to frontend directory**
+```bash
+cd ../frontend
+```
+
+2. **Install dependencies**
+```bash
+npm install
+```
+
+3. **Start the frontend development server**
+```bash
+npm start
+```
+
+### Access the Application
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **🔐 Secure Login Test**: http://localhost:8000/secure/login-test
+
+### Quick Development Start
+
+For convenience, you can start both backend and frontend servers with one command:
+
+```bash
+# From the project root directory
+./start-dev.sh
+```
+
+This script will:
+- Start the backend API server on port 8000
+- Start the frontend React app on port 3000
+- Install frontend dependencies if needed
+- Display all access points
+- Stop both servers when you press Ctrl+C
 
 ## 📋 **API Endpoints**
 
 ### Authentication & User Management
 - `POST /auth/register` - User registration
-- `POST /auth/login` - User login
+- `POST /auth/login` - User login (supports both regular and encrypted passwords)
 - `GET /users/me` - Get current user profile
 - `GET /users/` - List users (admin only)
 - `PUT /users/{user_id}` - Update user (admin only)
 - `POST /users/{user_id}/suspend` - Suspend user (admin only)
+
+### 🔐 Security & Testing
+- `GET /secure/login-test` - Interactive secure login test page with encryption
+- `GET /auth/verify` - Verify JWT token and authorization status
+- `GET /test/auth` - Interactive token validation interface
 
 ### Book Management
 - `GET /books/` - List books (public)
@@ -159,11 +251,13 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 ## 🛡️ **Security Features**
 
 - **JWT Authentication** with secure token handling
+- **🔐 Client-Side Password Encryption** with AES-GCM encryption
 - **Role-Based Access Control** with granular permissions
 - **Failed Login Protection** with account suspension
 - **Audit Logging** for all access attempts
 - **Input Validation** with Pydantic schemas
 - **SQL Injection Protection** through SQLAlchemy ORM
+- **Browser Network Tab Protection** - passwords never visible in plain text
 
 ## 📊 **Database Schema**
 
@@ -198,7 +292,15 @@ alembic downgrade -1
 pytest tests/
 
 # Check API health
-curl http://localhost:8080/health
+curl http://localhost:8000/health
+
+# Test secure login with encryption
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "aditya@test.com", "password": "Aditya@2004"}'
+
+# Access secure login test interface
+open http://localhost:8000/secure/login-test
 ```
 
 ### Code Quality
@@ -230,6 +332,7 @@ mypy app/
 
 ## 🔄 **Version History**
 
+- **v2.1.0** - Added client-side password encryption with AES-GCM, enhanced security features
 - **v2.0.0** - Enhanced edition with RBAC, loan management, and advanced features
 - **v1.0.0** - Basic book library API
 
@@ -251,6 +354,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [SQLAlchemy](https://www.sqlalchemy.org/) - SQL toolkit and ORM
 - [Alembic](https://alembic.sqlalchemy.org/) - Database migration tool
 - [Pydantic](https://pydantic-docs.helpmanual.io/) - Data validation
+- [PyCryptodome](https://pycryptodome.readthedocs.io/) - Cryptographic library for server-side encryption
 - [JWT](https://jwt.io/) - JSON Web Tokens for authentication
 - [MySQL](https://www.mysql.com/) - Relational database
 
@@ -263,4 +367,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**🚀 Ready for production use with enterprise-grade features!**
+**🚀 Ready for production use with enterprise-grade features and client-side encryption security!**
+
+### 🔐 **Test the Secure Login System**
+
+Visit http://localhost:8000/secure/login-test to experience the client-side password encryption in action. You'll see how passwords are encrypted before transmission, keeping them secure from browser network tab inspection.

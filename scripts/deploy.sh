@@ -35,13 +35,13 @@ warning() {
 check_environment() {
     log "Checking deployment environment..."
     
-    if [ ! -f "app/main.py" ]; then
-        error "app/main.py not found. Are you in the correct directory?"
+    if [ ! -f "backend/app/main.py" ]; then
+        error "backend/app/main.py not found. Are you in the correct directory?"
         exit 1
     fi
     
-    if [ ! -f "alembic.ini" ]; then
-        error "alembic.ini not found. Migration system not initialized."
+    if [ ! -f "backend/alembic.ini" ]; then
+        error "backend/alembic.ini not found. Migration system not initialized."
         exit 1
     fi
     
