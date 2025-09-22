@@ -237,3 +237,25 @@ async def get_pending_migrations(current_user: UserResponse = Depends(require_ad
     except Exception as e:
         logger.error(f"Error getting pending migrations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/upgrade-simple")
+async def upgrade_database_simple(
+    current_user: UserResponse = Depends(require_admin_user)
+):
+    """Simple database upgrade without backup (for Railway environment)."""
+    try:
+        migration_manager = MigrationManager()
+        
+        # Direct upgrade without backup
+        success = migration_manager.upgrade_database("head")
+        current_revision = migration_manager.get_current_revision()
+        
+        return {
+            "success": success,
+            "message": "Database upgraded successfully" if success else "Database upgrade failed",
+            "current_revision": current_revision,
+            "backup_path": None
+        }
+    except Exception as e:
+        logger.error(f"Error upgrading database: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
