@@ -7,7 +7,8 @@ import secrets
 load_dotenv()
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "mysql+pymysql://root:@localhost:3306/library_db"
+    # Use Railway DATABASE_URL if available, otherwise fallback to localhost
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "mysql+pymysql://root:@localhost:3306/library_db")
     UPLOAD_DIR: str = "uploads"
     LOG_LEVEL: str = "INFO"
     # Generate a secure secret key if not provided in environment
