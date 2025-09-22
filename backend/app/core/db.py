@@ -39,23 +39,14 @@ try:
     
     Base = declarative_base()
 
-    # Test connection and create database if it doesn't exist
-    from sqlalchemy import text
-    try:
-        with engine.connect() as conn:
-            # Test basic connectivity
-            result = conn.execute(text("SELECT 1")).scalar()
-            
-            # Check if our database exists, create if not
-            conn.execute(text("CREATE DATABASE IF NOT EXISTS library_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
-            conn.execute(text("USE library_db"))
-            
-            logger.info("✅ Database connection established successfully")
-            logger.info(f"✅ Connected to MySQL at: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'localhost'}")
-            
-    except Exception as conn_error:
-        logger.error(f"❌ Database connection test failed: {str(conn_error)}")
-        raise
+    # Note: Database connection test moved to startup event
+    # This prevents blocking the app if DB is not available at import time
+    logger.info("📊 Database engine created successfully")
+    if '@' in settings.DATABASE_URL:
+        db_host = settings.DATABASE_URL.split('@')[1].split('/')[0]
+        logger.info(f"🗄️  Database configured for: {db_host}")
+    else:
+        logger.info("🗄️  Database configured for: localhost")
         
 except Exception as e:
     logger.error(f"❌ Failed to create database engine: {str(e)}")
@@ -63,6 +54,30 @@ except Exception as e:
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Function to test database connection (called during startup)
+def test_database_connection():
+    """Test database connection and create database if needed"""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            # Test basic connectivity
+            result = conn.execute(text("SELECT 1")).scalar()
+            
+            # For Railway MySQL, the database 'railway' already exists
+            # For local MySQL, create library_db if it doesn't exist
+            if 'railway' not in settings.DATABASE_URL:
+                conn.execute(text("CREATE DATABASE IF NOT EXISTS library_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+                conn.execute(text("USE library_db"))
+            
+            logger.info("✅ Database connection established successfully")
+            logger.info(f"✅ Connected to MySQL at: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'localhost'}")
+            return True
+            
+    except Exception as conn_error:
+        logger.error(f"❌ Database connection test failed: {str(conn_error)}")
+        logger.error("💡 Make sure to set DATABASE_URL environment variable")
+        raise
 
 # Dependency to get database session
 def get_db():

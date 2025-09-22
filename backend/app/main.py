@@ -12,7 +12,7 @@ from app.routers import user_management as user_management_router
 from app.routers import auth_verify as auth_verify_router  # Add this import
 from app.routers import test_auth as test_auth_router  # Add test auth router
 from app.routers import secure_test as secure_test_router  # Add secure test router
-from app.core.db import engine, Base
+from app.core.db import engine, Base, test_database_connection
 from app.database import SessionLocal
 from app.models import RequestLog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -69,7 +69,35 @@ app.add_middleware(
 )
 
 # Create database tables
-Base.metadata.create_all(bind=engine)
+# Note: Database connection test moved to startup event
+# Base.metadata.create_all(bind=engine)  # This will be called after connection test
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection and create tables on startup"""
+    try:
+        logger.info("🚀 Starting Book Library API v2...")
+        
+        # Test database connection
+        test_database_connection()
+        
+        # Create database tables
+        Base.metadata.create_all(bind=engine)
+        logger.info("📋 Database tables created/verified successfully")
+        
+        logger.info("✅ Application startup completed successfully")
+        
+    except Exception as e:
+        logger.error(f"❌ Startup failed: {str(e)}")
+        logger.error("💡 Check your DATABASE_URL environment variable")
+        # Don't raise the exception - let the app start even if DB is not available
+        # This allows Railway to show better error messages
+        pass
+
+@app.on_event("shutdown") 
+async def shutdown_event():
+    """Cleanup on application shutdown"""
+    logger.info("🛑 Shutting down Book Library API v2...")
 
 # Include routers
 app.include_router(auth_router.router)  # Authentication & basic user operations
