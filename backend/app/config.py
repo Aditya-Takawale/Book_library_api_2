@@ -7,7 +7,7 @@ import secrets
 load_dotenv()
 
 class Settings(BaseSettings):
-    # Use Railway DATABASE_URL if available, otherwise fallback to localhost
+    # Support both MySQL (Railway) and PostgreSQL (Render)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "mysql+pymysql://root:@localhost:3306/library_db")
     UPLOAD_DIR: str = "uploads"
     LOG_LEVEL: str = "INFO"
