@@ -156,6 +156,17 @@ class MigrationManager:
     def backup_database(self, backup_path: Optional[str] = None) -> str:
         """Create a database backup before migration."""
         try:
+            # Check if mysqldump is available (not available in Railway containers)
+            import shutil
+            if not shutil.which("mysqldump"):
+                logger.warning("mysqldump not available, skipping backup creation")
+                return "backup_skipped_mysqldump_not_available"
+            
+            # Skip backup in Railway environment
+            if os.getenv("RAILWAY_ENVIRONMENT"):
+                logger.warning("Railway environment detected, skipping backup creation")
+                return "backup_skipped_railway_environment"
+            
             if backup_path is None:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
