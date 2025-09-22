@@ -4,6 +4,7 @@ Migration utilities for database schema management.
 import os
 import sys
 import subprocess
+import shutil
 from typing import List, Optional
 from pathlib import Path
 import logging
@@ -157,7 +158,6 @@ class MigrationManager:
         """Create a database backup before migration."""
         try:
             # Check if mysqldump is available (not available in Railway containers)
-            import shutil
             if not shutil.which("mysqldump"):
                 logger.warning("mysqldump not available, skipping backup creation")
                 return "backup_skipped_mysqldump_not_available"
