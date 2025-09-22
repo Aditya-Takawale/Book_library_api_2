@@ -143,5 +143,32 @@ class Book(Base):
         self.download_count += 1
         self.update_popularity_score()
 
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "isbn": self.isbn,
+            "genre": self.genre,
+            "page_count": self.page_count,
+            "publication_year": self.publication_year,
+            "publisher": self.publisher,
+            "language": self.language,
+            "description": self.description,
+            "cover_image": self.cover_image,
+            "is_available": self.is_available,
+            "total_copies": self.total_copies,
+            "available_copies": self.available_copies,
+            "reserved_copies": self.reserved_copies,
+            "view_count": self.view_count,
+            "download_count": self.download_count,
+            "popularity_score": self.popularity_score,
+            "average_rating": self.average_rating,
+            "review_count": self.review_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "authors": [author.to_dict() if hasattr(author, 'to_dict') else {"id": author.id, "name": author.name} for author in self.authors] if self.authors else []
+        }
+
     def __repr__(self):
         return f"<Book(id={self.id}, title='{self.title}', avg_rating={self.average_rating}, copies={self.available_copies}/{self.total_copies})>"

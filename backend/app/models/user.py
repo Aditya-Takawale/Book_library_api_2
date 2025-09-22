@@ -125,3 +125,20 @@ class User(Base):
         if self.can_borrow_books():
             perms.append('borrow_books')
         return list(set(perms))
+
+    def to_dict(self):
+        """Convert model to dictionary for JSON serialization"""
+        return {
+            "id": self.id,
+            "email": self.email,
+            "username": self.username,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "role": self.role.value if self.role else None,
+            "status": self.status.value if self.status else None,
+            "full_name": self.full_name,
+            "permissions": self.permissions,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_login": self.last_login.isoformat() if self.last_login else None
+        }

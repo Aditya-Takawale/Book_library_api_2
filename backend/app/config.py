@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 import os
 import secrets
+from typing import List, Union
 
 load_dotenv()
 
@@ -14,8 +15,8 @@ class Settings(BaseSettings):
     # Generate a secure secret key if not provided in environment
     SECRET_KEY: str = os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
     
-    # Production security settings - include Railway domains and Vercel
-    CORS_ORIGINS: list = [
+    # Handle CORS_ORIGINS as both list and comma-separated string
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "http://localhost:3001", 
         "http://localhost:3002",
@@ -34,6 +35,13 @@ class Settings(BaseSettings):
         # Add your specific Vercel URL here when you know it
         "https://book-library-frontend.vercel.app"
     ]
+    
+    def get_cors_origins(self) -> List[str]:
+        """Get CORS origins as a list, handling both string and list inputs"""
+        if isinstance(self.CORS_ORIGINS, str):
+            # Split comma-separated string
+            return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        return self.CORS_ORIGINS
 
     class Config:
         env_file = ".env"
