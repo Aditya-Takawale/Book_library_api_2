@@ -29,7 +29,7 @@ from app.config import settings
 # Setup logging
 log_dir = "logs"
 os.makedirs(log_dir, exist_ok=True)
-log_level = logging.DEBUG  # Temporarily set to DEBUG for troubleshooting
+log_level = logging.INFO  # Reduced from DEBUG to prevent excessive logging
 logging.basicConfig(
     level=log_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -81,40 +81,14 @@ async def startup_event():
         # Test database connection
         test_database_connection()
         
-        # Run alembic migrations instead of create_all for Railway
-        if os.getenv("RAILWAY_ENVIRONMENT"):
-            logger.info("🚆 Railway environment detected, running alembic migrations...")
-            try:
-                from app.utils.migrations import MigrationManager
-                migration_manager = MigrationManager()
-                
-                # Check migration status
-                status = migration_manager.check_migration_status()
-                logger.info(f"Current revision: {status.get('current_revision')}")
-                logger.info(f"Pending migrations: {len(status.get('pending_migrations', []))}")
-                
-                if status.get('needs_migration', False):
-                    logger.info("📦 Running migrations...")
-                    success = migration_manager.upgrade_database("head")
-                    if success:
-                        logger.info("✅ Migrations completed successfully!")
-                    else:
-                        logger.error("❌ Migration failed!")
-                        # Fallback to create_all
-                        Base.metadata.create_all(bind=engine)
-                        logger.info("📋 Used fallback table creation")
-                else:
-                    logger.info("✅ Database schema is up to date")
-            except Exception as migration_error:
-                logger.error(f"🔧 Migration error: {migration_error}")
-                logger.info("🔄 Falling back to table creation...")
-                # Fallback to create_all
-                Base.metadata.create_all(bind=engine)
-                logger.info("📋 Database tables created/verified successfully")
-        else:
-            # For local development, use create_all
-            Base.metadata.create_all(bind=engine)
-            logger.info("📋 Database tables created/verified successfully")
+        # Temporarily disable auto-migrations on Railway to fix restart loop
+        # Use direct table creation for faster startup
+        logger.info("📋 Creating/verifying database tables...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database tables created/verified successfully")
+        
+        # Migration system is available via /admin/migration endpoints
+        logger.info("� Migrations can be run manually via /admin/migration endpoints")
         
         logger.info("✅ Application startup completed successfully")
         
