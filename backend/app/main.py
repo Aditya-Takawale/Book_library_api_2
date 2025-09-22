@@ -74,16 +74,47 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database connection and create tables on startup"""
+    """Initialize database connection and run migrations on startup"""
     try:
         logger.info("🚀 Starting Book Library API v2...")
         
         # Test database connection
         test_database_connection()
         
-        # Create database tables
-        Base.metadata.create_all(bind=engine)
-        logger.info("📋 Database tables created/verified successfully")
+        # Run alembic migrations instead of create_all for Railway
+        if os.getenv("RAILWAY_ENVIRONMENT"):
+            logger.info("🚆 Railway environment detected, running alembic migrations...")
+            try:
+                from app.utils.migrations import MigrationManager
+                migration_manager = MigrationManager()
+                
+                # Check migration status
+                status = migration_manager.check_migration_status()
+                logger.info(f"Current revision: {status.get('current_revision')}")
+                logger.info(f"Pending migrations: {len(status.get('pending_migrations', []))}")
+                
+                if status.get('needs_migration', False):
+                    logger.info("📦 Running migrations...")
+                    success = migration_manager.upgrade_database("head")
+                    if success:
+                        logger.info("✅ Migrations completed successfully!")
+                    else:
+                        logger.error("❌ Migration failed!")
+                        # Fallback to create_all
+                        Base.metadata.create_all(bind=engine)
+                        logger.info("📋 Used fallback table creation")
+                else:
+                    logger.info("✅ Database schema is up to date")
+            except Exception as migration_error:
+                logger.error(f"🔧 Migration error: {migration_error}")
+                logger.info("🔄 Falling back to table creation...")
+                # Fallback to create_all
+                Base.metadata.create_all(bind=engine)
+                logger.info("📋 Database tables created/verified successfully")
+        else:
+            # For local development, use create_all
+            Base.metadata.create_all(bind=engine)
+            logger.info("📋 Database tables created/verified successfully")
         
         logger.info("✅ Application startup completed successfully")
         
