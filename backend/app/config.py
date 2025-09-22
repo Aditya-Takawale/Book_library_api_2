@@ -25,6 +25,9 @@ class Settings(BaseSettings):
         # Railway domains
         "https://*.railway.app",
         "https://f0f5067f-b62e-4c39-a056-378ee7ee8fd1.railway.app",
+        # Render domains
+        "https://*.render.com",
+        "https://*.onrender.com",
         # Vercel domains
         "https://*.vercel.app",
         "https://*.vercel.com",
@@ -47,6 +50,11 @@ class Settings(BaseSettings):
         # Railway deployment detection
         if os.getenv("RAILWAY_ENVIRONMENT"):
             print(f"🚆 Running on Railway environment: {os.getenv('RAILWAY_ENVIRONMENT')}")
+            print(f"🗄️  Database host: {self.DATABASE_URL.split('@')[1].split('/')[0] if '@' in self.DATABASE_URL else 'localhost'}")
+            
+        # Render deployment detection
+        if os.getenv("RENDER"):
+            print(f"🎨 Running on Render environment")
             print(f"🗄️  Database host: {self.DATABASE_URL.split('@')[1].split('/')[0] if '@' in self.DATABASE_URL else 'localhost'}")
 
 settings = Settings()
