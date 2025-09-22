@@ -137,7 +137,7 @@ class LoanService:
     @staticmethod
     def get_user_loans(db: Session, user_id: int, status: Optional[LoanStatus] = None) -> List[BookLoan]:
         """Get loans for a specific user."""
-        query = db.query(BookLoan).filter(BookLoan.user_id == user_id)
+        query = db.query(BookLoan).join(Book, BookLoan.book_id == Book.id).filter(BookLoan.user_id == user_id)
         
         if status:
             query = query.filter(BookLoan.status == status)

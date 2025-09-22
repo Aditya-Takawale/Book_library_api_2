@@ -30,11 +30,15 @@ import {
   Category as CategoryIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
+import { useSnackbar } from 'notistack';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { Book } from '../../types';
 
 const LibraryPage: React.FC = () => {
   const theme = useTheme();
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -45,6 +49,24 @@ const LibraryPage: React.FC = () => {
   const [availableOnly, setAvailableOnly] = useState(false);
 
   const itemsPerPage = 12;
+
+  // Mutation for borrowing books
+  const borrowMutation = useMutation({
+    mutationFn: (bookId: number) => apiService.borrowBook(bookId),
+    onSuccess: (loan) => {
+      enqueueSnackbar(`Successfully borrowed book! Due date: ${new Date(loan.due_date).toLocaleDateString()}`, { 
+        variant: 'success' 
+      });
+      // Refresh the books list to update available copies
+      fetchBooks();
+      // Invalidate any loan-related queries
+      queryClient.invalidateQueries({ queryKey: ['myLoans'] });
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to borrow book';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+    },
+  });
 
   useEffect(() => {
     fetchBooks();
@@ -94,12 +116,7 @@ const LibraryPage: React.FC = () => {
   };
 
   const handleBorrowBook = async (bookId: number) => {
-    try {
-      // TODO: Implement borrow book functionality
-      console.log('Borrowing book:', bookId);
-    } catch (err: any) {
-      setError(err.message || 'Failed to borrow book');
-    }
+    borrowMutation.mutate(bookId);
   };
 
   const containerVariants = {
@@ -376,13 +393,18 @@ const LibraryPage: React.FC = () => {
                         variant="contained"
                         size="small"
                         onClick={() => handleBorrowBook(book.id)}
-                        disabled={book.available_copies !== undefined && book.available_copies <= 0}
+                        disabled={
+                          (book.available_copies !== undefined && book.available_copies <= 0) ||
+                          borrowMutation.isPending
+                        }
                         sx={{
                           borderRadius: 2,
                           textTransform: 'none',
                         }}
                       >
-                        {book.available_copies !== undefined && book.available_copies <= 0
+                        {borrowMutation.isPending
+                          ? 'Borrowing...'
+                          : book.available_copies !== undefined && book.available_copies <= 0
                           ? 'Not Available'
                           : 'Borrow'}
                       </Button>

@@ -333,7 +333,7 @@ const ProfilePage: React.FC = () => {
                               <BookIcon color={loan.return_date ? 'success' : 'primary'} />
                             </ListItemIcon>
                             <ListItemText
-                              primary={loan.book?.title || 'Unknown Book'}
+                              primary={loan.book_title || 'Unknown Book'}
                               secondary={
                                 <Box>
                                   <Typography variant="body2" color="text.secondary">

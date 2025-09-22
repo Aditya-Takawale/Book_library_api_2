@@ -83,6 +83,46 @@ async def return_book(
         logger.error(f"Error returning book: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to return book")
 
+@router.put("/{loan_id}/member-return", response_model=BookLoanResponse)
+async def member_return_book(
+    loan_id: int,
+    current_user: UserResponse = Depends(require_member_user),
+    db: Session = Depends(get_db)
+):
+    """Allow members to return their own books."""
+    try:
+        # Check if user owns the loan
+        loan = db.query(BookLoan).filter(BookLoan.id == loan_id).first()
+        if not loan:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+        
+        if loan.user_id != current_user.id:
+            log_access_attempt(current_user, "loans", "member-return", False, f"Unauthorized access to loan {loan_id}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Can only return your own books")
+        
+        if loan.return_date is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Book has already been returned")
+        
+        loan = LoanService.return_book(db, loan_id, current_user.id)
+        
+        response = BookLoanResponse.from_orm(loan)
+        response.is_overdue = loan.is_overdue
+        response.days_until_due = loan.days_until_due
+        
+        log_access_attempt(current_user, "loans", "member-return", True, f"Loan {loan_id}")
+        logger.info(f"Book returned by member {current_user.email}: Loan {loan_id}")
+        return response
+        
+    except ValueError as e:
+        log_access_attempt(current_user, "loans", "member-return", False, str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_access_attempt(current_user, "loans", "member-return", False, str(e))
+        logger.error(f"Error returning book: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to return book")
+
 @router.put("/{loan_id}/renew", response_model=BookLoanResponse)
 async def renew_loan(
     loan_id: int,
@@ -148,6 +188,43 @@ async def get_all_loans(
         
     except Exception as e:
         logger.error(f"Error fetching all loans: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch loans")
+
+@router.get("/user/me", response_model=List[BookLoanResponse])
+async def get_my_loans(
+    status: Optional[LoanStatus] = Query(None, description="Filter by loan status"),
+    current_user: UserResponse = Depends(require_member_user),
+    db: Session = Depends(get_db)
+):
+    """Get loans for the current authenticated user."""
+    try:
+        logger.info(f"Getting loans for user: {current_user.email}, ID: {current_user.id}, Role: {current_user.role}")
+        loans = LoanService.get_user_loans(db, current_user.id, status)
+        
+        response_loans = []
+        for loan in loans:
+            response = BookLoanResponse.from_orm(loan)
+            response.is_overdue = loan.is_overdue
+            response.days_until_due = loan.days_until_due
+            
+            # Add book title if available
+            if loan.book:
+                response.book_title = loan.book.title
+                logger.info(f"Setting book title for loan {loan.id}: {loan.book.title}")
+            else:
+                logger.warning(f"No book relationship found for loan {loan.id}, book_id: {loan.book_id}")
+                response.book_title = "Unknown Book"
+                
+            if loan.user:
+                response.user_email = loan.user.email
+            response_loans.append(response)
+        
+        log_access_attempt(current_user, "loans", "view", True, f"My loans")
+        logger.info(f"Successfully retrieved {len(response_loans)} loans for user {current_user.email}")
+        return response_loans
+        
+    except Exception as e:
+        logger.error(f"Error fetching user loans for {current_user.email}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch loans")
 
 @router.get("/user/{user_id}", response_model=List[BookLoanResponse])

@@ -33,7 +33,8 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Autorenew as RenewIcon,
-  AccessTime as AccessTimeIcon
+  AccessTime as AccessTimeIcon,
+  AssignmentReturn as ReturnIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { apiService } from '../../services/api';
@@ -79,7 +80,7 @@ const MyLoansPage: React.FC = () => {
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getUserLoans();
+      const response = await apiService.getMyLoans();
       setLoans(response);
       setError('');
     } catch (err: any) {
@@ -97,6 +98,19 @@ const MyLoansPage: React.FC = () => {
       await fetchLoans(); // Refresh loans
     } catch (err: any) {
       setError(err.message || 'Failed to renew loan');
+    }
+  };
+
+  const handleReturnBook = async (loanId: number) => {
+    try {
+      setLoading(true);
+      await apiService.returnBook(loanId);
+      await fetchLoans(); // Refresh loans to update the list
+      // You might want to show a success message here
+    } catch (err: any) {
+      setError(err.message || 'Failed to return book');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -296,7 +310,7 @@ const MyLoansPage: React.FC = () => {
                           </Avatar>
                           <Box flexGrow={1}>
                             <Typography variant="h6" fontWeight="bold">
-                              {loan.book?.title || 'Unknown Book'}
+                              {loan.book_title || 'Unknown Book'}
                             </Typography>
                             <Typography color="text.secondary">
                               {loan.book?.authors?.[0]?.full_name || 'Unknown Author'}
@@ -354,7 +368,17 @@ const MyLoansPage: React.FC = () => {
                           </Box>
                         )}
 
-                        <Box display="flex" justifyContent="flex-end" mt={2}>
+                        <Box display="flex" justifyContent="flex-end" gap={1} mt={2}>
+                          <Button
+                            startIcon={<ReturnIcon />}
+                            variant="contained"
+                            size="small"
+                            onClick={() => handleReturnBook(loan.id)}
+                            color="success"
+                            sx={{ borderRadius: 2 }}
+                          >
+                            Return
+                          </Button>
                           <Button
                             startIcon={<RenewIcon />}
                             variant="outlined"
@@ -403,7 +427,7 @@ const MyLoansPage: React.FC = () => {
                     <TableCell>
                       <Box>
                         <Typography fontWeight="bold">
-                          {loan.book?.title || 'Unknown Book'}
+                          {loan.book_title || 'Unknown Book'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {loan.book?.authors?.[0]?.full_name || 'Unknown Author'}
@@ -461,7 +485,7 @@ const MyLoansPage: React.FC = () => {
           {renewDialog.loan && (
             <Box>
               <Typography variant="h6" gutterBottom>
-                {renewDialog.loan.book?.title}
+                {renewDialog.loan.book_title || 'Unknown Book'}
               </Typography>
               <Typography color="text.secondary" gutterBottom>
                 Current due date: {new Date(renewDialog.loan.due_date).toLocaleDateString()}

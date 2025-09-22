@@ -264,7 +264,7 @@ class ApiService {
   }
 
   async returnBook(loanId: number): Promise<Loan> {
-    const response: AxiosResponse<Loan> = await this.api.post(`/loans/${loanId}/return`);
+    const response: AxiosResponse<Loan> = await this.api.put(`/loans/${loanId}/member-return`);
     return response.data;
   }
 

@@ -7,6 +7,9 @@ from app.services.loan_service import LoanService
 from app.utils.dependencies import get_current_user
 from app.schemas.user import UserResponse
 from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger("BorrowAPI")
 
 router = APIRouter()
 
@@ -19,20 +22,32 @@ def borrow_book(
     """
     Allows the current logged-in user to borrow a book.
     """
+    logger.info(f"User {current_user.id} requesting to borrow book {borrow_request.book_id}")
+    
     # Create a loan for the current user
     loan_data = {
         "book_id": borrow_request.book_id,
-        "user_id": current_user.id,
-        "due_date": datetime.now() + timedelta(days=14)  # Standard 14-day loan
+        "due_date": datetime.now() + timedelta(days=14),  # Standard 14-day loan
+        "notes": None
     }
     
+    logger.info(f"Creating loan with data: {loan_data} for user_id: {current_user.id}")
+    
     try:
-        # Note: The create_loan service method might need adjustment
-        # if it strictly requires a librarian_id for logging/validation.
-        # For now, we'll pass the user's own ID.
         new_loan = LoanService.create_loan(db, loan_data, current_user.id)
-        return new_loan
+        
+        logger.info(f"Loan created successfully: {new_loan.id}")
+        
+        # Convert to response model
+        response = BookLoanResponse.from_orm(new_loan)
+        response.is_overdue = new_loan.is_overdue
+        response.days_until_due = new_loan.days_until_due
+        
+        return response
     except ValueError as e:
+        logger.error(f"ValueError creating loan for user {current_user.id}, book {borrow_request.book_id}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="An unexpected error occurred while borrowing the book.")
+        logger.error(f"Error creating loan for user {current_user.id}, book {borrow_request.book_id}: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"Failed to create loan: {str(e)}")

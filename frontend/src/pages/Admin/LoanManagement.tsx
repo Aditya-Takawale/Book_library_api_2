@@ -311,7 +311,7 @@ const LoanManagement: React.FC = () => {
                           </Avatar>
                           <Box>
                             <Typography variant="body2" fontWeight="medium">
-                              {loan.book?.title || 'Unknown Book'}
+                              {loan.book_title || 'Unknown Book'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {loan.book?.isbn && `ISBN: ${loan.book.isbn}`}
@@ -405,7 +405,7 @@ const LoanManagement: React.FC = () => {
           {selectedLoan && (
             <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.100', borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
-                <strong>Book:</strong> {selectedLoan.book?.title}
+                <strong>Book:</strong> {selectedLoan.book_title || 'Unknown Book'}
               </Typography>
               <Typography variant="subtitle2" gutterBottom>
                 <strong>User:</strong> {selectedLoan.user?.username} ({selectedLoan.user?.email})

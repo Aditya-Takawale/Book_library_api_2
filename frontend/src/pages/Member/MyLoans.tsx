@@ -73,7 +73,7 @@ const MyLoans: React.FC = () => {
               ) : loans && loans.length > 0 ? (
                 loans.map((loan) => (
                   <TableRow key={loan.id} hover>
-                    <TableCell>{loan.book?.title || 'N/A'}</TableCell>
+                    <TableCell>{loan.book_title || 'N/A'}</TableCell>
                     <TableCell>{format(new Date(loan.loan_date), 'PPP')}</TableCell>
                     <TableCell>{format(new Date(loan.due_date), 'PPP')}</TableCell>
                     <TableCell>{loan.return_date ? format(new Date(loan.return_date), 'PPP') : '-'}</TableCell>
