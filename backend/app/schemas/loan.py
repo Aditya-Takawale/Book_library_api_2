@@ -6,6 +6,7 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from enum import Enum
 from decimal import Decimal
+from .author import AuthorSummary
 
 class LoanStatus(str, Enum):
     ACTIVE = "Active"
@@ -21,6 +22,16 @@ class ReservationStatus(str, Enum):
     FULFILLED = "Fulfilled"
     EXPIRED = "Expired"
     CANCELLED = "Cancelled"
+
+# Simplified book schema for loan responses
+class BookSummary(BaseModel):
+    """Lightweight book representation for loan listings"""
+    id: int
+    title: str
+    authors: List[AuthorSummary] = []
+    
+    class Config:
+        from_attributes = True
 
 # Book Loan Schemas
 class BookLoanCreate(BaseModel):
@@ -59,7 +70,7 @@ class BookLoanResponse(BaseModel):
     updated_at: datetime
     
     # Related objects
-    book_title: Optional[str] = None
+    book: Optional[BookSummary] = None
     user_email: Optional[str] = None
     
     class Config:

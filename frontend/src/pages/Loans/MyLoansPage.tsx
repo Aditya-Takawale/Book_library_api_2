@@ -33,7 +33,8 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Autorenew as RenewIcon,
-  AccessTime as AccessTimeIcon
+  AccessTime as AccessTimeIcon,
+  KeyboardReturn as ReturnIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { apiService } from '../../services/api';
@@ -91,12 +92,33 @@ const MyLoansPage: React.FC = () => {
 
   const handleRenewLoan = async (loanId: number, newDueDate: string) => {
     try {
-      // TODO: Implement renew loan functionality
-      console.log('Renewing loan:', loanId, 'until:', newDueDate);
+      await apiService.renewLoan(loanId);
       setRenewDialog({ open: false, loan: null });
       await fetchLoans(); // Refresh loans
+      setError(''); // Clear any previous errors
     } catch (err: any) {
       setError(err.message || 'Failed to renew loan');
+    }
+  };
+
+  const handleReturnBook = async (loanId: number) => {
+    try {
+      setError(''); // Clear any previous errors
+      await apiService.returnBook(loanId);
+      await fetchLoans(); // Refresh loans to get updated data
+      
+      // Show success message
+      console.log(`Book returned successfully. Loan ID: ${loanId}`);
+    } catch (err: any) {
+      console.error('Return book error:', err);
+      
+      // If the book is already returned, just refresh the loans to update the UI
+      if (err.message?.includes('Book already returned')) {
+        await fetchLoans();
+        setError(''); // Don't show error for already returned books
+      } else {
+        setError(err.message || 'Failed to return book');
+      }
     }
   };
 
@@ -354,13 +376,24 @@ const MyLoansPage: React.FC = () => {
                           </Box>
                         )}
 
-                        <Box display="flex" justifyContent="flex-end" mt={2}>
+                        <Box display="flex" justifyContent="flex-end" gap={1} mt={2}>
+                          <Button
+                            startIcon={<ReturnIcon />}
+                            variant="contained"
+                            size="small"
+                            color="success"
+                            onClick={() => handleReturnBook(loan.id)}
+                            disabled={loan.status === LoanStatus.RETURNED}
+                            sx={{ borderRadius: 2 }}
+                          >
+                            Return
+                          </Button>
                           <Button
                             startIcon={<RenewIcon />}
                             variant="outlined"
                             size="small"
                             onClick={() => setRenewDialog({ open: true, loan })}
-                            disabled={isOverdue(loan)}
+                            disabled={isOverdue(loan) || loan.status === LoanStatus.RETURNED}
                             sx={{ borderRadius: 2 }}
                           >
                             Renew

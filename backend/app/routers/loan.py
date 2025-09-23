@@ -46,6 +46,22 @@ async def create_loan(
         response.is_overdue = loan.is_overdue
         response.days_until_due = loan.days_until_due
         
+        # Add complete book information if available
+        if loan.book:
+            from app.schemas.loan import BookSummary
+            from app.schemas.author import AuthorSummary
+            
+            # Create book object with authors
+            book_authors = [
+                AuthorSummary.from_orm(author) for author in loan.book.authors
+            ] if loan.book.authors else []
+            
+            response.book = BookSummary(
+                id=loan.book.id,
+                title=loan.book.title,
+                authors=book_authors
+            )
+        
         logger.info(f"Loan created by {current_user.email}: Book {loan_data.book_id} to User {loan_data.user_id}")
         return response
         
@@ -71,6 +87,73 @@ async def return_book(
         response.is_overdue = loan.is_overdue
         response.days_until_due = loan.days_until_due
         
+        # Add complete book information if available
+        if loan.book:
+            from app.schemas.loan import BookSummary
+            from app.schemas.author import AuthorSummary
+            
+            # Create book object with authors
+            book_authors = [
+                AuthorSummary.from_orm(author) for author in loan.book.authors
+            ] if loan.book.authors else []
+            
+            response.book = BookSummary(
+                id=loan.book.id,
+                title=loan.book.title,
+                authors=book_authors
+            )
+        
+        log_access_attempt(current_user, "loans", "return", True, f"Loan {loan_id}")
+        logger.info(f"Book returned by {current_user.email}: Loan {loan_id}")
+        return response
+        
+    except ValueError as e:
+        log_access_attempt(current_user, "loans", "return", False, str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        log_access_attempt(current_user, "loans", "return", False, str(e))
+        logger.error(f"Error returning book: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to return book")
+
+@router.post("/{loan_id}/return", response_model=BookLoanResponse)
+async def return_book_member(
+    loan_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Process book return (members can return their own books)."""
+    try:
+        # Check if the loan belongs to the current user (unless they're admin/librarian)
+        loan = db.query(BookLoan).filter(BookLoan.id == loan_id).first()
+        if not loan:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+        
+        if loan.user_id != current_user.id and current_user.role not in ['Admin', 'Librarian']:
+            log_access_attempt(current_user, "loans", "return", False, f"Not owner of loan {loan_id}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Can only return your own books")
+        
+        returned_loan = LoanService.return_book(db, loan_id, current_user.id)
+        
+        response = BookLoanResponse.from_orm(returned_loan)
+        response.is_overdue = returned_loan.is_overdue
+        response.days_until_due = returned_loan.days_until_due
+        
+        # Add complete book information if available
+        if returned_loan.book:
+            from app.schemas.loan import BookSummary
+            from app.schemas.author import AuthorSummary
+            
+            # Create book object with authors
+            book_authors = [
+                AuthorSummary.from_orm(author) for author in returned_loan.book.authors
+            ] if returned_loan.book.authors else []
+            
+            response.book = BookSummary(
+                id=returned_loan.book.id,
+                title=returned_loan.book.title,
+                authors=book_authors
+            )
+        
         log_access_attempt(current_user, "loans", "return", True, f"Loan {loan_id}")
         logger.info(f"Book returned by {current_user.email}: Loan {loan_id}")
         return response
@@ -87,7 +170,7 @@ async def return_book(
 async def renew_loan(
     loan_id: int,
     renewal_data: BookLoanRenewal,
-    current_user: UserResponse = Depends(require_member_user),
+    current_user: UserResponse = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Renew a book loan (member+ can renew their own loans)."""
@@ -106,6 +189,74 @@ async def renew_loan(
         response = BookLoanResponse.from_orm(renewed_loan)
         response.is_overdue = renewed_loan.is_overdue
         response.days_until_due = renewed_loan.days_until_due
+        
+        # Add complete book information if available
+        if renewed_loan.book:
+            from app.schemas.loan import BookSummary
+            from app.schemas.author import AuthorSummary
+            
+            # Create book object with authors
+            book_authors = [
+                AuthorSummary.from_orm(author) for author in renewed_loan.book.authors
+            ] if renewed_loan.book.authors else []
+            
+            response.book = BookSummary(
+                id=renewed_loan.book.id,
+                title=renewed_loan.book.title,
+                authors=book_authors
+            )
+        
+        log_access_attempt(current_user, "loans", "renew", True, f"Loan {loan_id}")
+        logger.info(f"Loan renewed by {current_user.email}: Loan {loan_id}")
+        return response
+        
+    except ValueError as e:
+        log_access_attempt(current_user, "loans", "renew", False, str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        log_access_attempt(current_user, "loans", "renew", False, str(e))
+        logger.error(f"Error renewing loan: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to renew loan")
+
+@router.post("/{loan_id}/renew", response_model=BookLoanResponse)
+async def renew_loan_member(
+    loan_id: int,
+    current_user: UserResponse = Depends(require_member_user),
+    db: Session = Depends(get_db)
+):
+    """Renew a book loan with default extension (members can renew their own loans)."""
+    try:
+        # Check if user owns the loan or is librarian/admin
+        loan = db.query(BookLoan).filter(BookLoan.id == loan_id).first()
+        if not loan:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+        
+        if loan.user_id != current_user.id and current_user.role not in ['Admin', 'Librarian']:
+            log_access_attempt(current_user, "loans", "renew", False, f"Not owner of loan {loan_id}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Can only renew your own loans")
+        
+        # Use default extension of 14 days
+        renewed_loan = LoanService.renew_loan(db, loan_id, 14)
+        
+        response = BookLoanResponse.from_orm(renewed_loan)
+        response.is_overdue = renewed_loan.is_overdue
+        response.days_until_due = renewed_loan.days_until_due
+        
+        # Add complete book information if available
+        if renewed_loan.book:
+            from app.schemas.loan import BookSummary
+            from app.schemas.author import AuthorSummary
+            
+            # Create book object with authors
+            book_authors = [
+                AuthorSummary.from_orm(author) for author in renewed_loan.book.authors
+            ] if renewed_loan.book.authors else []
+            
+            response.book = BookSummary(
+                id=renewed_loan.book.id,
+                title=renewed_loan.book.title,
+                authors=book_authors
+            )
         
         log_access_attempt(current_user, "loans", "renew", True, f"Loan {loan_id}")
         logger.info(f"Loan renewed by {current_user.email}: Loan {loan_id}")
@@ -137,8 +288,23 @@ async def get_all_loans(
             response = BookLoanResponse.from_orm(loan)
             response.is_overdue = loan.is_overdue
             response.days_until_due = loan.days_until_due
+            
+            # Add complete book information if available
             if loan.book:
-                response.book_title = loan.book.title
+                from app.schemas.loan import BookSummary
+                from app.schemas.author import AuthorSummary
+                
+                # Create book object with authors
+                book_authors = [
+                    AuthorSummary.from_orm(author) for author in loan.book.authors
+                ] if loan.book.authors else []
+                
+                response.book = BookSummary(
+                    id=loan.book.id,
+                    title=loan.book.title,
+                    authors=book_authors
+                )
+            
             if loan.user:
                 response.user_email = loan.user.email
             response_loans.append(response)
@@ -171,9 +337,23 @@ async def get_user_loans(
             response = BookLoanResponse.from_orm(loan)
             response.is_overdue = loan.is_overdue
             response.days_until_due = loan.days_until_due
-            # Add book title if available
+            
+            # Add complete book information if available
             if loan.book:
-                response.book_title = loan.book.title
+                from app.schemas.loan import BookSummary
+                from app.schemas.author import AuthorSummary
+                
+                # Create book object with authors
+                book_authors = [
+                    AuthorSummary.from_orm(author) for author in loan.book.authors
+                ] if loan.book.authors else []
+                
+                response.book = BookSummary(
+                    id=loan.book.id,
+                    title=loan.book.title,
+                    authors=book_authors
+                )
+            
             response_loans.append(response)
         
         log_access_attempt(current_user, "loans", "view", True, f"User {user_id} loans")
@@ -182,6 +362,48 @@ async def get_user_loans(
     except Exception as e:
         logger.error(f"Error fetching user loans: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch loans")
+
+@router.get("/my", response_model=List[BookLoanResponse])
+async def get_my_loans(
+    status: Optional[LoanStatus] = Query(None, description="Filter by loan status"),
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get loans for the current authenticated user."""
+    try:
+        logger.info(f"Fetching loans for user {current_user.email} (ID: {current_user.id})")
+        loans = LoanService.get_user_loans(db, current_user.id, status)
+        
+        response_loans = []
+        for loan in loans:
+            response = BookLoanResponse.from_orm(loan)
+            response.is_overdue = loan.is_overdue
+            response.days_until_due = loan.days_until_due
+            
+            # Add complete book information if available
+            if loan.book:
+                from app.schemas.loan import BookSummary
+                from app.schemas.author import AuthorSummary
+                
+                # Create book object with authors
+                book_authors = [
+                    AuthorSummary.from_orm(author) for author in loan.book.authors
+                ] if loan.book.authors else []
+                
+                response.book = BookSummary(
+                    id=loan.book.id,
+                    title=loan.book.title,
+                    authors=book_authors
+                )
+            
+            response_loans.append(response)
+        
+        logger.info(f"Retrieved {len(response_loans)} loans for user {current_user.email}")
+        return response_loans
+        
+    except Exception as e:
+        logger.error(f"Error fetching my loans: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch my loans")
 
 @router.get("/overdue", response_model=List[BookLoanResponse])
 async def get_overdue_loans(
@@ -197,9 +419,23 @@ async def get_overdue_loans(
             response = BookLoanResponse.from_orm(loan)
             response.is_overdue = loan.is_overdue
             response.days_until_due = loan.days_until_due
-            # Add related data
+            
+            # Add complete book information if available
             if loan.book:
-                response.book_title = loan.book.title
+                from app.schemas.loan import BookSummary
+                from app.schemas.author import AuthorSummary
+                
+                # Create book object with authors
+                book_authors = [
+                    AuthorSummary.from_orm(author) for author in loan.book.authors
+                ] if loan.book.authors else []
+                
+                response.book = BookSummary(
+                    id=loan.book.id,
+                    title=loan.book.title,
+                    authors=book_authors
+                )
+            
             if loan.user:
                 response.user_email = loan.user.email
             response_loans.append(response)

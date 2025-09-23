@@ -36,6 +36,7 @@ import { Book } from '../../types';
 const LibraryPage: React.FC = () => {
   const theme = useTheme();
   const [books, setBooks] = useState<Book[]>([]);
+  const [allBooks, setAllBooks] = useState<Book[]>([]); // Store all fetched books
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,32 +49,52 @@ const LibraryPage: React.FC = () => {
 
   useEffect(() => {
     fetchBooks();
-  }, [currentPage, searchTerm, genre, availableOnly]);
+  }, [searchTerm, genre, availableOnly]);
+
+  // Separate effect for pagination (client-side)
+  useEffect(() => {
+    if (allBooks.length > 0) {
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const currentPageBooks = allBooks.slice(startIndex, endIndex);
+      setBooks(currentPageBooks);
+    }
+  }, [currentPage, allBooks]);
 
   const fetchBooks = async () => {
     try {
       setLoading(true);
       console.log('LibraryPage: Fetching books with params:', {
-        skip: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
+        skip: 0,
+        limit: 100, // Fetch more books to enable pagination
         search: searchTerm || undefined,
         genre: genre || undefined,
         available_only: availableOnly
       });
       
       const response = await apiService.getBooks({
-        skip: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
+        skip: 0,
+        limit: 100, // Fetch more books
         search: searchTerm || undefined,
         genre: genre || undefined,
         available_only: availableOnly
       });
 
       console.log('LibraryPage: Received books:', response?.length, 'books');
-      setBooks(response);
-      // For now, we'll calculate pages based on results
-      // In a real implementation, the API should return total count
-      setTotalPages(Math.max(1, Math.ceil(response.length / itemsPerPage)));
+      
+      // Store all books and calculate pagination
+      const fetchedBooks = response || [];
+      setAllBooks(fetchedBooks);
+      
+      const totalPages = Math.max(1, Math.ceil(fetchedBooks.length / itemsPerPage));
+      setTotalPages(totalPages);
+      
+      // Calculate books for current page
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const currentPageBooks = fetchedBooks.slice(startIndex, endIndex);
+      setBooks(currentPageBooks);
+      
       setError('');
     } catch (err: any) {
       console.error('LibraryPage: Error fetching books:', err);
@@ -93,10 +114,17 @@ const LibraryPage: React.FC = () => {
     setCurrentPage(1);
   };
 
+  const handleAvailableOnlyChange = (checked: boolean) => {
+    setAvailableOnly(checked);
+    setCurrentPage(1);
+  };
+
   const handleBorrowBook = async (bookId: number) => {
     try {
-      // TODO: Implement borrow book functionality
-      console.log('Borrowing book:', bookId);
+      await apiService.borrowBook(bookId);
+      await fetchBooks(); // Refresh books to show updated availability
+      setError(''); // Clear any previous errors
+      // You could add a success message here if desired
     } catch (err: any) {
       setError(err.message || 'Failed to borrow book');
     }
@@ -197,7 +225,7 @@ const LibraryPage: React.FC = () => {
             <Button
               fullWidth
               variant={availableOnly ? 'contained' : 'outlined'}
-              onClick={() => setAvailableOnly(!availableOnly)}
+              onClick={() => handleAvailableOnlyChange(!availableOnly)}
               sx={{ height: '56px', borderRadius: 2 }}
             >
               Available Only

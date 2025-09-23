@@ -151,10 +151,12 @@ export interface Loan {
 }
 
 export enum LoanStatus {
-  ACTIVE = 'active',
-  RETURNED = 'returned',
-  OVERDUE = 'overdue',
-  RESERVED = 'reserved'
+  ACTIVE = 'Active',
+  RETURNED = 'Returned',
+  OVERDUE = 'Overdue',
+  RENEWED = 'Renewed',
+  LOST = 'Lost',
+  DAMAGED = 'Damaged'
 }
 
 export interface LoanCreate {

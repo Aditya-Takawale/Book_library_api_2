@@ -24,6 +24,7 @@ import {
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboardStats, usePopularBooks, useUserLoans } from '../../hooks/useApi';
+import { LoanStatus } from '../../types';
 
 const DashboardPage: React.FC = () => {
   const theme = useTheme();
@@ -62,14 +63,14 @@ const DashboardPage: React.FC = () => {
   const statsCards = [
     {
       title: 'Books Read',
-      value: userLoans?.filter(loan => loan.status === 'returned').length || 0,
+      value: userLoans?.filter(loan => loan.status === LoanStatus.RETURNED).length || 0,
       icon: <MenuBook />,
       color: theme.palette.primary.main,
       trend: '+12%',
     },
     {
       title: 'Currently Reading',
-      value: userLoans?.filter(loan => loan.status === 'active').length || 0,
+      value: userLoans?.filter(loan => loan.status === LoanStatus.ACTIVE).length || 0,
       icon: <AccessTime />,
       color: theme.palette.warning.main,
       trend: '+5%',
@@ -235,10 +236,10 @@ const DashboardPage: React.FC = () => {
                   <Typography variant="h6" gutterBottom>
                     Continue Reading
                   </Typography>
-                  {userLoans?.filter(loan => loan.status === 'active').length ? (
+                  {userLoans?.filter(loan => loan.status === LoanStatus.ACTIVE).length ? (
                     <Stack spacing={2}>
                       {userLoans
-                        .filter(loan => loan.status === 'active')
+                        .filter(loan => loan.status === LoanStatus.ACTIVE)
                         .slice(0, 3)
                         .map((loan) => (
                           <Box
