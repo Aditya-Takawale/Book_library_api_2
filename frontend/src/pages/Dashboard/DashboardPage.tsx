@@ -252,7 +252,7 @@ const DashboardPage: React.FC = () => {
                             }}
                           >
                             <Typography variant="subtitle1" fontWeight="bold">
-                              {loan.book_title || 'Unknown Title'}
+                              {loan.book?.title || 'Unknown Title'}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" gutterBottom>
                               by {loan.book?.authors?.[0]?.full_name || 'Unknown Author'}
