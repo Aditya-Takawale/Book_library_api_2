@@ -63,6 +63,16 @@ async def require_verified_user(
     if hasattr(current_user, 'role') and current_user.role == UserRole.ADMIN:
         return current_user
     
+    # For local development, bypass email verification check
+    # Check if we're in local development (localhost database)
+    try:
+        from app.config import settings
+        if "localhost" in settings.DATABASE_URL or "127.0.0.1" in settings.DATABASE_URL:
+            logger.info(f"Local development mode: bypassing email verification for {current_user.email}")
+            return current_user
+    except Exception as e:
+        logger.warning(f"Could not check development mode: {e}")
+    
     if not getattr(current_user, 'email_verified', True):
         raise EmailNotVerifiedError()
     
