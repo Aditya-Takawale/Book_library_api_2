@@ -34,7 +34,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Autorenew as RenewIcon,
   AccessTime as AccessTimeIcon,
-  AssignmentReturn as ReturnIcon
+  KeyboardReturn as ReturnIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { apiService } from '../../services/api';
@@ -80,7 +80,7 @@ const MyLoansPage: React.FC = () => {
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getMyLoans();
+      const response = await apiService.getUserLoans();
       setLoans(response);
       setError('');
     } catch (err: any) {
@@ -92,10 +92,10 @@ const MyLoansPage: React.FC = () => {
 
   const handleRenewLoan = async (loanId: number, newDueDate: string) => {
     try {
-      // TODO: Implement renew loan functionality
-      console.log('Renewing loan:', loanId, 'until:', newDueDate);
+      await apiService.renewLoan(loanId);
       setRenewDialog({ open: false, loan: null });
       await fetchLoans(); // Refresh loans
+      setError(''); // Clear any previous errors
     } catch (err: any) {
       setError(err.message || 'Failed to renew loan');
     }
@@ -103,14 +103,22 @@ const MyLoansPage: React.FC = () => {
 
   const handleReturnBook = async (loanId: number) => {
     try {
-      setLoading(true);
+      setError(''); // Clear any previous errors
       await apiService.returnBook(loanId);
-      await fetchLoans(); // Refresh loans to update the list
-      // You might want to show a success message here
+      await fetchLoans(); // Refresh loans to get updated data
+      
+      // Show success message
+      console.log(`Book returned successfully. Loan ID: ${loanId}`);
     } catch (err: any) {
-      setError(err.message || 'Failed to return book');
-    } finally {
-      setLoading(false);
+      console.error('Return book error:', err);
+      
+      // If the book is already returned, just refresh the loans to update the UI
+      if (err.message?.includes('Book already returned')) {
+        await fetchLoans();
+        setError(''); // Don't show error for already returned books
+      } else {
+        setError(err.message || 'Failed to return book');
+      }
     }
   };
 
@@ -310,7 +318,7 @@ const MyLoansPage: React.FC = () => {
                           </Avatar>
                           <Box flexGrow={1}>
                             <Typography variant="h6" fontWeight="bold">
-                              {loan.book_title || 'Unknown Book'}
+                              {loan.book?.title || 'Unknown Book'}
                             </Typography>
                             <Typography color="text.secondary">
                               {loan.book?.authors?.[0]?.full_name || 'Unknown Author'}
@@ -373,8 +381,9 @@ const MyLoansPage: React.FC = () => {
                             startIcon={<ReturnIcon />}
                             variant="contained"
                             size="small"
-                            onClick={() => handleReturnBook(loan.id)}
                             color="success"
+                            onClick={() => handleReturnBook(loan.id)}
+                            disabled={loan.status === LoanStatus.RETURNED}
                             sx={{ borderRadius: 2 }}
                           >
                             Return
@@ -384,7 +393,7 @@ const MyLoansPage: React.FC = () => {
                             variant="outlined"
                             size="small"
                             onClick={() => setRenewDialog({ open: true, loan })}
-                            disabled={isOverdue(loan)}
+                            disabled={isOverdue(loan) || loan.status === LoanStatus.RETURNED}
                             sx={{ borderRadius: 2 }}
                           >
                             Renew
@@ -427,7 +436,7 @@ const MyLoansPage: React.FC = () => {
                     <TableCell>
                       <Box>
                         <Typography fontWeight="bold">
-                          {loan.book_title || 'Unknown Book'}
+                          {loan.book?.title || 'Unknown Book'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {loan.book?.authors?.[0]?.full_name || 'Unknown Author'}
@@ -485,7 +494,7 @@ const MyLoansPage: React.FC = () => {
           {renewDialog.loan && (
             <Box>
               <Typography variant="h6" gutterBottom>
-                {renewDialog.loan.book_title || 'Unknown Book'}
+                {renewDialog.loan.book?.title}
               </Typography>
               <Typography color="text.secondary" gutterBottom>
                 Current due date: {new Date(renewDialog.loan.due_date).toLocaleDateString()}

@@ -146,8 +146,6 @@ export interface Loan {
   fine_amount?: number;
   created_at: string;
   updated_at: string;
-  book_title?: string;
-  user_email?: string;
   book?: Book;
   user?: User;
 }
@@ -156,7 +154,9 @@ export enum LoanStatus {
   ACTIVE = 'Active',
   RETURNED = 'Returned',
   OVERDUE = 'Overdue',
-  RESERVED = 'Reserved'
+  RENEWED = 'Renewed',
+  LOST = 'Lost',
+  DAMAGED = 'Damaged'
 }
 
 export interface LoanCreate {

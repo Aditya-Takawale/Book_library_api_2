@@ -30,16 +30,13 @@ import {
   Category as CategoryIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { useSnackbar } from 'notistack';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { Book } from '../../types';
 
 const LibraryPage: React.FC = () => {
   const theme = useTheme();
-  const { enqueueSnackbar } = useSnackbar();
-  const queryClient = useQueryClient();
   const [books, setBooks] = useState<Book[]>([]);
+  const [allBooks, setAllBooks] = useState<Book[]>([]); // Store all fetched books
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,52 +47,54 @@ const LibraryPage: React.FC = () => {
 
   const itemsPerPage = 12;
 
-  // Mutation for borrowing books
-  const borrowMutation = useMutation({
-    mutationFn: (bookId: number) => apiService.borrowBook(bookId),
-    onSuccess: (loan) => {
-      enqueueSnackbar(`Successfully borrowed book! Due date: ${new Date(loan.due_date).toLocaleDateString()}`, { 
-        variant: 'success' 
-      });
-      // Refresh the books list to update available copies
-      fetchBooks();
-      // Invalidate any loan-related queries
-      queryClient.invalidateQueries({ queryKey: ['myLoans'] });
-    },
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.detail || error.message || 'Failed to borrow book';
-      enqueueSnackbar(errorMessage, { variant: 'error' });
-    },
-  });
-
   useEffect(() => {
     fetchBooks();
-  }, [currentPage, searchTerm, genre, availableOnly]);
+  }, [searchTerm, genre, availableOnly]);
+
+  // Separate effect for pagination (client-side)
+  useEffect(() => {
+    if (allBooks.length > 0) {
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const currentPageBooks = allBooks.slice(startIndex, endIndex);
+      setBooks(currentPageBooks);
+    }
+  }, [currentPage, allBooks]);
 
   const fetchBooks = async () => {
     try {
       setLoading(true);
       console.log('LibraryPage: Fetching books with params:', {
-        skip: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
+        skip: 0,
+        limit: 100, // Fetch more books to enable pagination
         search: searchTerm || undefined,
         genre: genre || undefined,
         available_only: availableOnly
       });
       
       const response = await apiService.getBooks({
-        skip: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
+        skip: 0,
+        limit: 100, // Fetch more books
         search: searchTerm || undefined,
         genre: genre || undefined,
         available_only: availableOnly
       });
 
       console.log('LibraryPage: Received books:', response?.length, 'books');
-      setBooks(response);
-      // For now, we'll calculate pages based on results
-      // In a real implementation, the API should return total count
-      setTotalPages(Math.max(1, Math.ceil(response.length / itemsPerPage)));
+      
+      // Store all books and calculate pagination
+      const fetchedBooks = response || [];
+      setAllBooks(fetchedBooks);
+      
+      const totalPages = Math.max(1, Math.ceil(fetchedBooks.length / itemsPerPage));
+      setTotalPages(totalPages);
+      
+      // Calculate books for current page
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const currentPageBooks = fetchedBooks.slice(startIndex, endIndex);
+      setBooks(currentPageBooks);
+      
       setError('');
     } catch (err: any) {
       console.error('LibraryPage: Error fetching books:', err);
@@ -115,8 +114,20 @@ const LibraryPage: React.FC = () => {
     setCurrentPage(1);
   };
 
+  const handleAvailableOnlyChange = (checked: boolean) => {
+    setAvailableOnly(checked);
+    setCurrentPage(1);
+  };
+
   const handleBorrowBook = async (bookId: number) => {
-    borrowMutation.mutate(bookId);
+    try {
+      await apiService.borrowBook(bookId);
+      await fetchBooks(); // Refresh books to show updated availability
+      setError(''); // Clear any previous errors
+      // You could add a success message here if desired
+    } catch (err: any) {
+      setError(err.message || 'Failed to borrow book');
+    }
   };
 
   const containerVariants = {
@@ -214,7 +225,7 @@ const LibraryPage: React.FC = () => {
             <Button
               fullWidth
               variant={availableOnly ? 'contained' : 'outlined'}
-              onClick={() => setAvailableOnly(!availableOnly)}
+              onClick={() => handleAvailableOnlyChange(!availableOnly)}
               sx={{ height: '56px', borderRadius: 2 }}
             >
               Available Only
@@ -393,18 +404,13 @@ const LibraryPage: React.FC = () => {
                         variant="contained"
                         size="small"
                         onClick={() => handleBorrowBook(book.id)}
-                        disabled={
-                          (book.available_copies !== undefined && book.available_copies <= 0) ||
-                          borrowMutation.isPending
-                        }
+                        disabled={book.available_copies !== undefined && book.available_copies <= 0}
                         sx={{
                           borderRadius: 2,
                           textTransform: 'none',
                         }}
                       >
-                        {borrowMutation.isPending
-                          ? 'Borrowing...'
-                          : book.available_copies !== undefined && book.available_copies <= 0
+                        {book.available_copies !== undefined && book.available_copies <= 0
                           ? 'Not Available'
                           : 'Borrow'}
                       </Button>

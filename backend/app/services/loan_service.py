@@ -1,7 +1,7 @@
 """
 Service layer for book loan and reservation management.
 """
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, asc
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
@@ -69,12 +69,16 @@ class LoanService:
     @staticmethod
     def return_book(db: Session, loan_id: int, librarian_id: int) -> BookLoan:
         """Process book return."""
-        loan = db.query(BookLoan).filter(BookLoan.id == loan_id).first()
+        loan = db.query(BookLoan).options(
+            joinedload(BookLoan.book).joinedload(Book.authors)
+        ).filter(BookLoan.id == loan_id).first()
         if not loan:
             raise ValueError("Loan not found")
         
         if loan.status == LoanStatus.RETURNED:
-            raise ValueError("Book already returned")
+            # Book already returned, just return the loan object
+            logger.info(f"Book already returned: Loan {loan_id}")
+            return loan
         
         # Update loan
         loan.return_date = datetime.now()
@@ -102,7 +106,9 @@ class LoanService:
     @staticmethod
     def renew_loan(db: Session, loan_id: int, extension_days: int = 14) -> BookLoan:
         """Renew a book loan."""
-        loan = db.query(BookLoan).filter(BookLoan.id == loan_id).first()
+        loan = db.query(BookLoan).options(
+            joinedload(BookLoan.book).joinedload(Book.authors)
+        ).filter(BookLoan.id == loan_id).first()
         if not loan:
             raise ValueError("Loan not found")
         
@@ -137,26 +143,41 @@ class LoanService:
     @staticmethod
     def get_user_loans(db: Session, user_id: int, status: Optional[LoanStatus] = None) -> List[BookLoan]:
         """Get loans for a specific user."""
-        query = db.query(BookLoan).join(Book, BookLoan.book_id == Book.id).filter(BookLoan.user_id == user_id)
+        from sqlalchemy.orm import joinedload
+        from app.models.book import Book
+        
+        query = db.query(BookLoan).filter(BookLoan.user_id == user_id)
         
         if status:
             query = query.filter(BookLoan.status == status)
+        
+        # Eagerly load book and author relationships
+        query = query.options(
+            joinedload(BookLoan.book).joinedload(Book.authors)
+        )
         
         return query.order_by(desc(BookLoan.loan_date)).all()
     
     @staticmethod
     def get_overdue_loans(db: Session) -> List[BookLoan]:
         """Get all overdue loans."""
+        from sqlalchemy.orm import joinedload
+        
         return db.query(BookLoan).filter(
             and_(
                 BookLoan.status.in_([LoanStatus.ACTIVE, LoanStatus.RENEWED]),
                 BookLoan.due_date < datetime.now()
             )
+        ).options(
+            joinedload(BookLoan.book).joinedload(Book.authors),
+            joinedload(BookLoan.user)
         ).all()
     
     @staticmethod
     def get_all_loans(db: Session, skip: int = 0, limit: int = 10, status: Optional[LoanStatus] = None, search: Optional[str] = None) -> tuple[int, List[BookLoan]]:
         """Get all loans with pagination, filtering, and searching."""
+        from sqlalchemy.orm import joinedload
+        
         query = db.query(BookLoan).join(Book, BookLoan.book_id == Book.id).join(User, BookLoan.user_id == User.id)
         
         if status:
@@ -174,6 +195,13 @@ class LoanService:
             )
             
         total = query.count()
+        
+        # Add eager loading for book and author relationships
+        query = query.options(
+            joinedload(BookLoan.book).joinedload(Book.authors),
+            joinedload(BookLoan.user)
+        )
+        
         loans = query.order_by(desc(BookLoan.loan_date)).offset(skip).limit(limit).all()
         
         return total, loans

@@ -61,20 +61,19 @@ async def require_verified_user(
     """Require user to have verified email, except for admin users."""
     # Admin users can bypass email verification requirement
     if hasattr(current_user, 'role') and current_user.role == UserRole.ADMIN:
-        logger.info(f"Admin user {current_user.email} bypassing email verification")
         return current_user
     
-    # DEVELOPMENT: Allow members to bypass email verification for now
-    if hasattr(current_user, 'role') and current_user.role == UserRole.MEMBER:
-        logger.info(f"DEVELOPMENT: Member user {current_user.email} bypassing email verification")
-        return current_user
+    # For local development, bypass email verification check
+    # Check if we're in local development (localhost database)
+    try:
+        from app.config import settings
+        if "localhost" in settings.DATABASE_URL or "127.0.0.1" in settings.DATABASE_URL:
+            logger.info(f"Local development mode: bypassing email verification for {current_user.email}")
+            return current_user
+    except Exception as e:
+        logger.warning(f"Could not check development mode: {e}")
     
-    # For other roles, check email verification
-    email_verified = getattr(current_user, 'email_verified', True)
-    logger.info(f"Email verification check for {current_user.email}: {email_verified}")
-    
-    if not email_verified:
-        logger.error(f"User {current_user.email} failed email verification check")
+    if not getattr(current_user, 'email_verified', True):
         raise EmailNotVerifiedError()
     
     return current_user
@@ -103,17 +102,9 @@ async def require_member_user(
     current_user: UserResponse = Depends(require_verified_user)
 ) -> UserResponse:
     """Require user to have member privileges or higher."""
-    logger.info(f"RBAC Check - User: {current_user.email}, Role: {getattr(current_user, 'role', 'NO_ROLE')}")
+    if not hasattr(current_user, 'role') or current_user.role not in [UserRole.ADMIN, UserRole.LIBRARIAN, UserRole.MEMBER]:
+        raise InsufficientPermissionsError("member or higher", getattr(current_user, 'role', 'unknown'))
     
-    if not hasattr(current_user, 'role'):
-        logger.error(f"User {current_user.email} has no role attribute")
-        raise InsufficientPermissionsError("member or higher", "no role")
-    
-    if current_user.role not in [UserRole.ADMIN, UserRole.LIBRARIAN, UserRole.MEMBER]:
-        logger.error(f"User {current_user.email} has insufficient role: {current_user.role}")
-        raise InsufficientPermissionsError("member or higher", str(current_user.role))
-    
-    logger.info(f"RBAC Success - User {current_user.email} with role {current_user.role} granted access")
     return current_user
 
 # Permission Checking Functions

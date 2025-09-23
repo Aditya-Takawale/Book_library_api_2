@@ -124,7 +124,9 @@ const LoanManagement: React.FC = () => {
       case LoanStatus.ACTIVE: return 'info';
       case LoanStatus.RETURNED: return 'success';
       case LoanStatus.OVERDUE: return 'error';
-      case LoanStatus.RESERVED: return 'warning';
+      case LoanStatus.RENEWED: return 'warning';
+      case LoanStatus.LOST: return 'error';
+      case LoanStatus.DAMAGED: return 'warning';
       default: return 'info';
     }
   };
@@ -134,7 +136,9 @@ const LoanManagement: React.FC = () => {
       case LoanStatus.ACTIVE: return <BookIcon fontSize="small" />;
       case LoanStatus.RETURNED: return <CheckIcon fontSize="small" />;
       case LoanStatus.OVERDUE: return <WarningIcon fontSize="small" />;
-      case LoanStatus.RESERVED: return <CalendarIcon fontSize="small" />;
+      case LoanStatus.RENEWED: return <CalendarIcon fontSize="small" />;
+      case LoanStatus.LOST: return <WarningIcon fontSize="small" />;
+      case LoanStatus.DAMAGED: return <WarningIcon fontSize="small" />;
       default: return <BookIcon fontSize="small" />;
     }
   };
@@ -204,7 +208,9 @@ const LoanManagement: React.FC = () => {
                 <MenuItem value={LoanStatus.ACTIVE}>Active</MenuItem>
                 <MenuItem value={LoanStatus.OVERDUE}>Overdue</MenuItem>
                 <MenuItem value={LoanStatus.RETURNED}>Returned</MenuItem>
-                <MenuItem value={LoanStatus.RESERVED}>Reserved</MenuItem>
+                <MenuItem value={LoanStatus.RENEWED}>Renewed</MenuItem>
+                <MenuItem value={LoanStatus.LOST}>Lost</MenuItem>
+                <MenuItem value={LoanStatus.DAMAGED}>Damaged</MenuItem>
               </Select>
             </FormControl>
             <Stack direction="row" spacing={2}>

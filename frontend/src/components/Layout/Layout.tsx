@@ -5,18 +5,17 @@ import {
   Toolbar,
   Typography,
   IconButton,
+  Box,
   Drawer,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
-  ListItemButton,
-  Box,
+  Divider,
   Avatar,
   Menu,
   MenuItem,
-  Divider,
-  Badge,
+  ListItemButton,
   useTheme,
   useMediaQuery,
   Tooltip,
@@ -29,7 +28,6 @@ import {
   Person,
   Settings,
   Logout,
-  Notifications,
   AdminPanelSettings,
   MenuBook,
 } from '@mui/icons-material';
@@ -210,14 +208,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* Right side icons */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Tooltip title="Notifications">
-              <IconButton color="inherit">
-                <Badge badgeContent={3} color="error">
-                  <Notifications />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-
             <Tooltip title="Account">
               <IconButton onClick={handleMenuClick} sx={{ ml: 1 }}>
                 <Avatar
